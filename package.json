@@ -12,6 +12,8 @@
     "prepare": "husky",
     "backend:dev": "pnpm --filter backend start:dev",
     "backend:build": "pnpm --filter backend build",
-    "backend:prod": "pnpm --filter backend start:prod"
+    "backend:prod": "pnpm --filter backend start:prod",
+    "frontend:dev": "pnpm --filter frontend start",
+    "frontend:build": "pnpm --filter frontend build"
   }
 }
