@@ -17,6 +17,8 @@
     "frontend:dev": "pnpm --filter frontend start",
     "frontend:build": "pnpm --filter frontend build",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix"
   }
 }
