@@ -6,7 +6,8 @@
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
-    "husky": "^9.1.7"
+    "husky": "^9.1.7",
+    "prettier": "^3.8.4"
   },
   "scripts": {
     "prepare": "husky",
@@ -14,6 +15,8 @@
     "backend:build": "pnpm --filter backend build",
     "backend:prod": "pnpm --filter backend start:prod",
     "frontend:dev": "pnpm --filter frontend start",
-    "frontend:build": "pnpm --filter frontend build"
+    "frontend:build": "pnpm --filter frontend build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   }
 }
