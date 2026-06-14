@@ -27,6 +27,7 @@ export function buildDataSourceOptions(env: NodeJS.ProcessEnv = process.env): Da
     password: parsed.POSTGRES_PASSWORD,
     database: parsed.POSTGRES_DB,
     synchronize: parsed.POSTGRES_SYNCHRONIZE,
+    uuidExtension: 'pgcrypto',
     entities: [join(__dirname, '..', '**', '*.entity.{ts,js}')],
     migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
   };
