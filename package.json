@@ -23,6 +23,11 @@
     "lint:fix": "pnpm -r lint:fix",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
-    "db:logs": "docker compose logs -f postgres"
+    "db:logs": "docker compose logs -f postgres",
+    "migration:generate": "pnpm --filter backend migration:generate",
+    "migration:run": "pnpm --filter backend migration:run",
+    "migration:revert": "pnpm --filter backend migration:revert",
+    "migration:run:prod": "pnpm --filter backend migration:run:prod",
+    "migration:revert:prod": "pnpm --filter backend migration:revert:prod"
   }
 }

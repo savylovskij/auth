@@ -1,5 +1,7 @@
+import { join } from 'node:path';
 import { registerAs } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { DataSourceOptions } from 'typeorm';
 import { z } from 'zod';
 
 const databaseEnvSchema = z.object({
@@ -14,17 +16,23 @@ const databaseEnvSchema = z.object({
     .transform((value) => value === 'true'),
 });
 
-export const databaseConfig = registerAs('database', (): TypeOrmModuleOptions => {
-  const env = databaseEnvSchema.parse(process.env);
+export function buildDataSourceOptions(env: NodeJS.ProcessEnv = process.env): DataSourceOptions {
+  const parsed = databaseEnvSchema.parse(env);
 
   return {
     type: 'postgres',
-    host: env.POSTGRES_HOST,
-    port: env.POSTGRES_PORT,
-    username: env.POSTGRES_USER,
-    password: env.POSTGRES_PASSWORD,
-    database: env.POSTGRES_DB,
-    autoLoadEntities: true,
-    synchronize: env.POSTGRES_SYNCHRONIZE,
+    host: parsed.POSTGRES_HOST,
+    port: parsed.POSTGRES_PORT,
+    username: parsed.POSTGRES_USER,
+    password: parsed.POSTGRES_PASSWORD,
+    database: parsed.POSTGRES_DB,
+    synchronize: parsed.POSTGRES_SYNCHRONIZE,
+    entities: [join(__dirname, '..', '**', '*.entity.{ts,js}')],
+    migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
   };
-});
+}
+
+export const databaseConfig = registerAs(
+  'database',
+  (): TypeOrmModuleOptions => ({ ...buildDataSourceOptions(), autoLoadEntities: true }),
+);
