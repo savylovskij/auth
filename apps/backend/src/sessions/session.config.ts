@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+
 import { z } from 'zod';
 
 const DAY_MS = 24 * 60 * 60 * 1000;

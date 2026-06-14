@@ -1,6 +1,7 @@
 import eslint from '@eslint/js';
 import angular from 'angular-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier';
+import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
@@ -14,7 +15,17 @@ export default tseslint.config(
       eslintConfigPrettier,
     ],
     processor: angular.processInlineTemplates,
+    plugins: {
+      'simple-import-sort': simpleImportSort,
+    },
     rules: {
+      'simple-import-sort/imports': [
+        'error',
+        {
+          groups: [['^@angular'], ['^@?\\w'], ['^'], ['^\\.']],
+        },
+      ],
+      'simple-import-sort/exports': 'error',
       '@angular-eslint/directive-selector': [
         'error',
         { type: 'attribute', prefix: 'app', style: 'camelCase' },

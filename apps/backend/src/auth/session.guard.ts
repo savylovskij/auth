@@ -1,8 +1,10 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+
 import type { Request, Response } from 'express';
-import { SessionsService } from '../sessions/sessions.service';
+
 import type { Session } from '../sessions/session.entity';
+import { SessionsService } from '../sessions/sessions.service';
 import type { AuthenticatedRequest } from './authenticated-request';
 import { SESSION_COOKIE, sessionCookieOptions } from './cookie';
 
