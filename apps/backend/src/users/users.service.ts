@@ -16,8 +16,8 @@ export class UsersService {
     return this.users.findOne({ where: { email } });
   }
 
-  create(email: string, passwordHash: string | null): Promise<User> {
-    const user = this.users.create({ email, passwordHash });
+  create(email: string): Promise<User> {
+    const user = this.users.create({ email });
 
     return this.users.save(user);
   }
