@@ -3,10 +3,9 @@ import { ConfigService } from '@nestjs/config';
 
 import type { Request, Response } from 'express';
 
-import type { Session } from '../sessions/session.entity';
 import { SessionsService } from '../sessions/sessions.service';
 import type { AuthenticatedRequest } from './authenticated-request';
-import { SESSION_COOKIE, sessionCookieOptions } from './cookie';
+import { SESSION_COOKIE, setSessionCookie } from './cookie';
 
 @Injectable()
 export class SessionGuard implements CanActivate {
@@ -33,16 +32,10 @@ export class SessionGuard implements CanActivate {
     request.session = session;
 
     const response = context.switchToHttp().getResponse<Response>();
-    this.refreshCookie(response, token, session);
+    const isProduction = this.config.get<string>('NODE_ENV') === 'production';
+    setSessionCookie(response, token, session.expiresAt, isProduction);
 
     return true;
-  }
-
-  private refreshCookie(response: Response, token: string, session: Session): void {
-    const maxAge = session.expiresAt.getTime() - Date.now();
-    const isProduction = this.config.get<string>('NODE_ENV') === 'production';
-
-    response.cookie(SESSION_COOKIE, token, sessionCookieOptions(maxAge, isProduction));
   }
 
   private readToken(request: Request): string | null {
