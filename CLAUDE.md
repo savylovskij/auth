@@ -19,6 +19,8 @@ and structure that could realistically scale to a production-grade application.
 
 - **No comments.** Do not add code comments anywhere unless the user explicitly
   asks for them.
+- **Interfaces in separate files.** Always declare an interface in its own file,
+  never inline it in a service/controller/other file.
 
 ## Tooling
 
