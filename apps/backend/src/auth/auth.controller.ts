@@ -18,7 +18,8 @@ import { SessionsService } from '../sessions/sessions.service';
 import { UserResponse } from '../users/dto/user-response.dto';
 import { User } from '../users/user.entity';
 import { AuthService } from './auth.service';
-import { setSessionCookie } from './cookie';
+import type { AuthenticatedRequest } from './authenticated-request';
+import { clearSessionCookie, setSessionCookie } from './cookie';
 import { CurrentUser } from './current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -66,13 +67,38 @@ export class AuthController {
     return user;
   }
 
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(SessionGuard)
+  @Post('logout')
+  async logout(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    await this.sessions.revokeById(request.session.id);
+    clearSessionCookie(response, this.isProduction);
+  }
+
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(SessionGuard)
+  @Post('logout-all')
+  async logoutAll(
+    @CurrentUser() user: User,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    await this.sessions.revokeByUserId(user.id);
+    clearSessionCookie(response, this.isProduction);
+  }
+
   private async startSession(user: User, request: Request, response: Response): Promise<void> {
     const { token, session } = await this.sessions.create(user.id, {
       userAgent: request.headers['user-agent'] ?? null,
       ip: request.ip ?? null,
     });
 
-    const isProduction = this.config.get<string>('NODE_ENV') === 'production';
-    setSessionCookie(response, token, session.expiresAt, isProduction);
+    setSessionCookie(response, token, session.expiresAt, this.isProduction);
+  }
+
+  private get isProduction(): boolean {
+    return this.config.get<string>('NODE_ENV') === 'production';
   }
 }

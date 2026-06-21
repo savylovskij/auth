@@ -10,15 +10,18 @@ export function setSessionCookie(
 ): void {
   const maxAge = expiresAt.getTime() - Date.now();
 
-  response.cookie(SESSION_COOKIE, token, sessionCookieOptions(maxAge, isProduction));
+  response.cookie(SESSION_COOKIE, token, { ...baseCookieOptions(isProduction), maxAge });
 }
 
-function sessionCookieOptions(maxAgeMs: number, isProduction: boolean): CookieOptions {
+export function clearSessionCookie(response: Response, isProduction: boolean): void {
+  response.clearCookie(SESSION_COOKIE, baseCookieOptions(isProduction));
+}
+
+function baseCookieOptions(isProduction: boolean): CookieOptions {
   return {
     httpOnly: true,
     secure: isProduction,
     sameSite: 'lax',
     path: '/',
-    maxAge: maxAgeMs,
   };
 }
