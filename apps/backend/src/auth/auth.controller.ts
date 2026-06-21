@@ -15,14 +15,15 @@ import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 
 import { Serialize } from '../common/serialize.interceptor';
+import { Session } from '../sessions/session.entity';
 import { SessionGuard } from '../sessions/session.guard';
 import { SessionsService } from '../sessions/sessions.service';
 import { AUTH_THROTTLE } from '../throttler/throttler.config';
 import { UserResponse } from '../users/dto/user-response.dto';
 import { User } from '../users/user.entity';
 import { AuthService } from './auth.service';
-import type { AuthenticatedRequest } from './authenticated-request';
 import { clearSessionCookie, setSessionCookie } from './cookie';
+import { CurrentSession } from './current-session.decorator';
 import { CurrentUser } from './current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -75,10 +76,10 @@ export class AuthController {
   @UseGuards(SessionGuard)
   @Post('logout')
   async logout(
-    @Req() request: AuthenticatedRequest,
+    @CurrentSession() session: Session,
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
-    await this.sessions.revokeById(request.session.id);
+    await this.sessions.revokeById(session.id);
     clearSessionCookie(response, this.isProduction);
   }
 

@@ -79,6 +79,12 @@ export class SessionsService {
     await this.sessions.delete({ id });
   }
 
+  async revokeForUser(id: string, userId: string): Promise<boolean> {
+    const result = await this.sessions.delete({ id, userId });
+
+    return result.affected !== 0;
+  }
+
   async revokeByUserId(userId: string): Promise<void> {
     await this.sessions.delete({ userId });
   }

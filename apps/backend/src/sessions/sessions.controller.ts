@@ -1,8 +1,21 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  UseGuards,
+} from '@nestjs/common';
 
-import type { AuthenticatedRequest } from '../auth/authenticated-request';
+import { CurrentSession } from '../auth/current-session.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { Serialize } from '../common/serialize.interceptor';
+import { User } from '../users/user.entity';
 import { SessionResponse } from './dto/session-response.dto';
+import { Session } from './session.entity';
 import { SessionGuard } from './session.guard';
 import { SessionsService } from './sessions.service';
 
@@ -13,12 +26,26 @@ export class SessionsController {
   @Serialize(SessionResponse)
   @UseGuards(SessionGuard)
   @Get()
-  async list(@Req() request: AuthenticatedRequest): Promise<SessionResponse[]> {
-    const sessions = await this.sessions.findActiveForUser(request.user.id);
+  async list(
+    @CurrentUser() user: User,
+    @CurrentSession() current: Session,
+  ): Promise<SessionResponse[]> {
+    const sessions = await this.sessions.findActiveForUser(user.id);
 
     return sessions.map((session) => ({
       ...session,
-      current: session.id === request.session.id,
+      current: session.id === current.id,
     }));
+  }
+
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(SessionGuard)
+  @Delete(':id')
+  async revoke(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    const revoked = await this.sessions.revokeForUser(id, user.id);
+
+    if (!revoked) {
+      throw new NotFoundException();
+    }
   }
 }
