@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { IdentitiesModule } from './identities/identities.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { ThrottlingModule } from './throttler/throttling.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -17,6 +18,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     DatabaseModule,
     SessionsModule,
+    ThrottlingModule,
     IdentitiesModule,
   ],
   controllers: [AppController],

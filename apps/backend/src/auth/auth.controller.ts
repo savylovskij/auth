@@ -10,11 +10,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 
 import type { Request, Response } from 'express';
 
 import { Serialize } from '../common/serialize.interceptor';
 import { SessionsService } from '../sessions/sessions.service';
+import { AUTH_THROTTLE } from '../throttler/throttler.config';
 import { UserResponse } from '../users/dto/user-response.dto';
 import { User } from '../users/user.entity';
 import { AuthService } from './auth.service';
@@ -33,6 +35,7 @@ export class AuthController {
     private readonly config: ConfigService,
   ) {}
 
+  @Throttle({ default: AUTH_THROTTLE })
   @Serialize(UserResponse)
   @Post('register')
   async register(
@@ -46,6 +49,7 @@ export class AuthController {
     return user;
   }
 
+  @Throttle({ default: AUTH_THROTTLE })
   @Serialize(UserResponse)
   @HttpCode(HttpStatus.OK)
   @Post('login')
