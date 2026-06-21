@@ -4,7 +4,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { Repository } from 'typeorm';
+import { MoreThan, Repository } from 'typeorm';
 
 import { sessionConfig } from './session.config';
 import { Session } from './session.entity';
@@ -62,6 +62,13 @@ export class SessionsService {
     }
 
     return this.renewIfNeeded(session, now, absoluteDeadline);
+  }
+
+  async findActiveForUser(userId: string): Promise<Session[]> {
+    return this.sessions.find({
+      where: { userId, expiresAt: MoreThan(new Date()) },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async revoke(token: string): Promise<void> {

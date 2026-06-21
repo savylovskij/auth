@@ -3,9 +3,9 @@ import { ConfigService } from '@nestjs/config';
 
 import type { Request, Response } from 'express';
 
-import { SessionsService } from '../sessions/sessions.service';
-import type { AuthenticatedRequest } from './authenticated-request';
-import { SESSION_COOKIE, setSessionCookie } from './cookie';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
+import { SESSION_COOKIE, setSessionCookie } from '../auth/cookie';
+import { SessionsService } from './sessions.service';
 
 @Injectable()
 export class SessionGuard implements CanActivate {

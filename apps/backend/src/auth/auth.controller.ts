@@ -15,6 +15,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 
 import { Serialize } from '../common/serialize.interceptor';
+import { SessionGuard } from '../sessions/session.guard';
 import { SessionsService } from '../sessions/sessions.service';
 import { AUTH_THROTTLE } from '../throttler/throttler.config';
 import { UserResponse } from '../users/dto/user-response.dto';
@@ -25,7 +26,6 @@ import { clearSessionCookie, setSessionCookie } from './cookie';
 import { CurrentUser } from './current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { SessionGuard } from './session.guard';
 
 @Controller('auth')
 export class AuthController {
