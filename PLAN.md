@@ -55,17 +55,21 @@ Substeps:
 - [x] Extracted `SessionsController` + `SessionGuard` into `SessionsModule`;
       added `@CurrentSession` decorator.
 
-## Step 3. Google OAuth (native)
+## Step 3. Google OAuth (native) — done
 
-- [ ] Config (client id/secret, redirect URI) via env + zod.
-- [ ] `GET /auth/google` — redirect to Google with `state` (CSRF) + scope.
-- [ ] `GET /auth/google/callback` — exchange `code` for tokens, fetch the
-      profile, find/create `User` by email, create a session + cookie.
-- [ ] Account linking — **decided: link**. If the Google email matches an
-      existing user, attach a new `google` identity to that same user (do not
-      create a duplicate user, do not error). If no user exists, create one.
+- [x] Config (client id/secret, redirect URI) via env + zod, wired through
+      `GoogleModule` (`forFeature` → fail-fast validation at boot).
+- [x] `GET /auth/google` — redirect to Google with `state` (CSRF, httpOnly
+      cookie) + scope `openid email profile`.
+- [x] `GET /auth/google/callback` — verify `state`, exchange `code` for tokens,
+      fetch the profile, find/create `User`, create a session + cookie, redirect.
+- [x] Account linking — **link**. `GoogleService.loginWithGoogle`: if a `google`
+      identity for the `sub` exists → its user; else (verified email required)
+      find user by email or create one, then attach a new `google` identity.
       Caveat: we trust Google's verified email; local accounts are currently
       unverified, so revisit once email verification (Step 5) lands.
+- Note: callback currently redirects to `/auth/me` as a temporary target;
+  becomes the frontend URL in Step 4.
 
 ## Step 4. Frontend (Angular)
 

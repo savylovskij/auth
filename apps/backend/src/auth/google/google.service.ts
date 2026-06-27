@@ -3,6 +3,11 @@ import { randomBytes } from 'node:crypto';
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 
+import { AUTH_PROVIDER_LIST } from '../../identities/auth-provider.constant';
+import { IdentitiesService } from '../../identities/identities.service';
+import type { User } from '../../users/user.entity';
+import { UsersService } from '../../users/users.service';
+import { normalizeEmail } from '../normalize-email';
 import { googleConfig } from './google.config';
 import type { GoogleProfile } from './google-profile.interface';
 import type { GoogleTokens } from './google-tokens.interface';
@@ -17,6 +22,8 @@ export class GoogleService {
   constructor(
     @Inject(googleConfig.KEY)
     private readonly config: ConfigType<typeof googleConfig>,
+    private readonly users: UsersService,
+    private readonly identities: IdentitiesService,
   ) {}
 
   createState(): string {
@@ -75,5 +82,28 @@ export class GoogleService {
     };
 
     return { sub: data.sub, email: data.email, emailVerified: data.email_verified };
+  }
+
+  async loginWithGoogle(profile: GoogleProfile): Promise<User> {
+    const existing = await this.identities.findByProvider(AUTH_PROVIDER_LIST.GOOGLE, profile.sub);
+
+    if (existing) {
+      return existing.user;
+    }
+
+    if (!profile.emailVerified) {
+      throw new UnauthorizedException('Google email is not verified');
+    }
+
+    const email = normalizeEmail(profile.email);
+    const user = (await this.users.findByEmail(email)) ?? (await this.users.create(email));
+
+    await this.identities.create({
+      userId: user.id,
+      provider: AUTH_PROVIDER_LIST.GOOGLE,
+      providerId: profile.sub,
+    });
+
+    return user;
   }
 }
