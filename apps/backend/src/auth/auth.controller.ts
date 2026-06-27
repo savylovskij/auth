@@ -22,11 +22,11 @@ import { AUTH_THROTTLE } from '../throttler/throttler.config';
 import { UserResponse } from '../users/dto/user-response.dto';
 import { User } from '../users/user.entity';
 import { AuthService } from './auth.service';
-import { clearSessionCookie, setSessionCookie } from './cookie';
 import { CurrentSession } from './current-session.decorator';
 import { CurrentUser } from './current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { clearSessionCookie, setSessionCookie } from './session-cookie';
 
 @Controller('auth')
 export class AuthController {
@@ -100,7 +100,12 @@ export class AuthController {
       ip: request.ip ?? null,
     });
 
-    setSessionCookie(response, token, session.expiresAt, this.isProduction);
+    setSessionCookie({
+      response,
+      token,
+      expiresAt: session.expiresAt,
+      isProduction: this.isProduction,
+    });
   }
 
   private get isProduction(): boolean {

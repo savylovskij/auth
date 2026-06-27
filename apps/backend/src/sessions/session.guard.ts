@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
-import { SESSION_COOKIE, setSessionCookie } from '../auth/cookie';
+import { SESSION_COOKIE, setSessionCookie } from '../auth/session-cookie';
 import { SessionsService } from './sessions.service';
 
 @Injectable()
@@ -33,7 +33,7 @@ export class SessionGuard implements CanActivate {
 
     const response = context.switchToHttp().getResponse<Response>();
     const isProduction = this.config.get<string>('NODE_ENV') === 'production';
-    setSessionCookie(response, token, session.expiresAt, isProduction);
+    setSessionCookie({ response, token, expiresAt: session.expiresAt, isProduction });
 
     return true;
   }
