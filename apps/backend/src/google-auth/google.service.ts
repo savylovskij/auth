@@ -3,11 +3,11 @@ import { randomBytes } from 'node:crypto';
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 
-import { AUTH_PROVIDER_LIST } from '../../identities/auth-provider.constant';
-import { IdentitiesService } from '../../identities/identities.service';
-import type { User } from '../../users/user.entity';
-import { UsersService } from '../../users/users.service';
-import { normalizeEmail } from '../normalize-email';
+import { normalizeEmail } from '../auth/normalize-email';
+import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
+import { IdentitiesService } from '../identities/identities.service';
+import type { User } from '../users/user.entity';
+import { UsersService } from '../users/users.service';
 import { googleConfig } from './google.config';
 import type { GoogleProfile } from './google-profile.interface';
 import type { GoogleTokens } from './google-tokens.interface';

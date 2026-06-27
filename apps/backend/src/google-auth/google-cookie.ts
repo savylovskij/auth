@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 
-import { baseCookieOptions } from '../cookie-options';
+import { baseCookieOptions } from '../auth/cookie-options';
 import type { SetStateCookieParams } from './set-state-cookie-params.interface';
 
 export const OAUTH_STATE_COOKIE = 'oauth_state';

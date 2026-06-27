@@ -3,9 +3,9 @@ import { ConfigService } from '@nestjs/config';
 
 import type { Response } from 'express';
 
-import { Cookie } from '../../common/cookie.decorator';
-import { SessionsService } from '../../sessions/sessions.service';
-import { setSessionCookie } from '../session-cookie';
+import { setSessionCookie } from '../auth/session-cookie';
+import { Cookie } from '../common/cookie.decorator';
+import { SessionsService } from '../sessions/sessions.service';
 import { GoogleService } from './google.service';
 import { clearStateCookie, OAUTH_STATE_COOKIE, setStateCookie } from './google-cookie';
 

@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
+import { GoogleModule } from './google-auth/google.module';
 import { IdentitiesModule } from './identities/identities.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { ThrottlingModule } from './throttler/throttling.module';
@@ -15,6 +16,7 @@ import { UsersModule } from './users/users.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
+    GoogleModule,
     UsersModule,
     DatabaseModule,
     SessionsModule,
