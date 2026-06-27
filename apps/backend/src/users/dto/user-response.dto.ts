@@ -2,14 +2,14 @@ import { Expose } from 'class-transformer';
 
 export class UserResponse {
   @Expose()
-  id: string;
+  id!: string;
 
   @Expose()
-  email: string;
+  email!: string;
 
   @Expose()
-  createdAt: Date;
+  createdAt!: Date;
 
   @Expose()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

@@ -2,20 +2,20 @@ import { Expose } from 'class-transformer';
 
 export class SessionResponse {
   @Expose()
-  id: string;
+  id!: string;
 
   @Expose()
-  userAgent: string | null;
+  userAgent!: string | null;
 
   @Expose()
-  ip: string | null;
+  ip!: string | null;
 
   @Expose()
-  createdAt: Date;
+  createdAt!: Date;
 
   @Expose()
-  expiresAt: Date;
+  expiresAt!: Date;
 
   @Expose()
-  current: boolean;
+  current!: boolean;
 }
