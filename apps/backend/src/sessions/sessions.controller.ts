@@ -10,8 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { CurrentSession } from '../auth/current-session.decorator';
-import { CurrentUser } from '../auth/current-user.decorator';
+import { CurrentSession } from '../common/current-session.decorator';
+import { CurrentUser } from '../common/current-user.decorator';
 import { Serialize } from '../common/serialize.interceptor';
 import { User } from '../users/user.entity';
 import { SessionResponse } from './dto/session-response.dto';

@@ -1,10 +1,11 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { SESSION_COOKIE, setSessionCookie } from '../auth/session-cookie';
+import { readCookie } from '../common/read-cookie';
 import { SessionsService } from './sessions.service';
 
 @Injectable()
@@ -16,7 +17,7 @@ export class SessionGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const token = this.readToken(request);
+    const token = readCookie(request, SESSION_COOKIE);
 
     if (!token) {
       throw new UnauthorizedException();
@@ -36,23 +37,5 @@ export class SessionGuard implements CanActivate {
     setSessionCookie({ response, token, expiresAt: session.expiresAt, isProduction });
 
     return true;
-  }
-
-  private readToken(request: Request): string | null {
-    const cookie = request.headers.cookie;
-
-    if (!cookie) {
-      return null;
-    }
-
-    for (const part of cookie.split(';')) {
-      const [name, ...rest] = part.trim().split('=');
-
-      if (name === SESSION_COOKIE) {
-        return decodeURIComponent(rest.join('='));
-      }
-    }
-
-    return null;
   }
 }

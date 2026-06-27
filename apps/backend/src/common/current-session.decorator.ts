@@ -1,7 +1,7 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import type { Session } from '../sessions/session.entity';
-import type { AuthenticatedRequest } from './authenticated-request';
 
 export const CurrentSession = createParamDecorator(
   (_data: unknown, context: ExecutionContext): Session => {

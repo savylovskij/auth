@@ -1,10 +1,12 @@
-import { Controller, Get, Res } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Query, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import type { Response } from 'express';
 
+import { Cookie } from '../../common/cookie.decorator';
 import { GoogleService } from './google.service';
-import { setStateCookie } from './google-cookie';
+import { clearStateCookie, OAUTH_STATE_COOKIE, setStateCookie } from './google-cookie';
+import { GoogleProfile } from './google-profile.interface';
 
 @Controller('auth/google')
 export class GoogleController {
@@ -21,6 +23,28 @@ export class GoogleController {
     setStateCookie({ response, state, isProduction: this.isProduction });
 
     response.redirect(url);
+  }
+
+  @Get('callback')
+  async callback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Cookie(OAUTH_STATE_COOKIE) expectedState: string | null,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<GoogleProfile> {
+    if (!state || !expectedState || state !== expectedState) {
+      throw new BadRequestException('Invalid OAuth state');
+    }
+
+    clearStateCookie(response, this.isProduction);
+
+    if (!code) {
+      throw new BadRequestException('Missing authorization code');
+    }
+
+    const tokens = await this.google.exchangeCode(code);
+
+    return this.google.fetchProfile(tokens.accessToken);
   }
 
   private get isProduction(): boolean {

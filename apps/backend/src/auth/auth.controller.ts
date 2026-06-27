@@ -14,6 +14,8 @@ import { Throttle } from '@nestjs/throttler';
 
 import type { Request, Response } from 'express';
 
+import { CurrentSession } from '../common/current-session.decorator';
+import { CurrentUser } from '../common/current-user.decorator';
 import { Serialize } from '../common/serialize.interceptor';
 import { Session } from '../sessions/session.entity';
 import { SessionGuard } from '../sessions/session.guard';
@@ -22,8 +24,6 @@ import { AUTH_THROTTLE } from '../throttler/throttler.config';
 import { UserResponse } from '../users/dto/user-response.dto';
 import { User } from '../users/user.entity';
 import { AuthService } from './auth.service';
-import { CurrentSession } from './current-session.decorator';
-import { CurrentUser } from './current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { clearSessionCookie, setSessionCookie } from './session-cookie';
