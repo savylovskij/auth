@@ -13,28 +13,28 @@ import { User } from '../users/user.entity';
 @Entity('sessions')
 export class Session {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ unique: true })
-  tokenHash: string;
+  tokenHash!: string;
 
   @Index()
   @Column()
-  userId: string;
+  userId!: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
-  user: User;
+  user!: User;
 
   @Column({ type: 'timestamp' })
-  expiresAt: Date;
+  expiresAt!: Date;
 
   @Column({ type: 'varchar', nullable: true })
-  userAgent: string | null;
+  userAgent!: string | null;
 
   @Column({ type: 'varchar', nullable: true })
-  ip: string | null;
+  ip!: string | null;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 }

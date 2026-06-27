@@ -16,28 +16,28 @@ import type { AuthProvider } from './auth-provider.type';
 @Index(['provider', 'providerId'], { unique: true })
 export class Identity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Index()
   @Column()
-  userId: string;
+  userId!: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
-  user: User;
+  user!: User;
 
   @Column({ type: 'varchar' })
-  provider: AuthProvider;
+  provider!: AuthProvider;
 
   @Column({ type: 'varchar' })
-  providerId: string;
+  providerId!: string;
 
   @Column({ type: 'varchar', nullable: true })
-  passwordHash: string | null;
+  passwordHash!: string | null;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }
