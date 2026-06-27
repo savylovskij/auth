@@ -8,11 +8,7 @@ import { MoreThan, Repository } from 'typeorm';
 
 import { sessionConfig } from './session.config';
 import { Session } from './session.entity';
-
-interface SessionMetadata {
-  userAgent?: string | null;
-  ip?: string | null;
-}
+import { SessionMetadata } from './session-metadata.interface';
 
 @Injectable()
 export class SessionsService {
