@@ -1,0 +1,29 @@
+<form (submit)="onSubmit($event)">
+  <h1>Sign in</h1>
+
+  <label>
+    Email
+    <input type="email" autocomplete="email" [formField]="loginForm.email" />
+  </label>
+  @if (loginForm.email().touched() && loginForm.email().invalid()) {
+    @for (error of loginForm.email().errors(); track $index) {
+      <p class="error">{{ error.message }}</p>
+    }
+  }
+
+  <label>
+    Password
+    <input type="password" autocomplete="current-password" [formField]="loginForm.password" />
+  </label>
+  @if (loginForm.password().touched() && loginForm.password().invalid()) {
+    @for (error of loginForm.password().errors(); track $index) {
+      <p class="error">{{ error.message }}</p>
+    }
+  }
+
+  @if (serverError()) {
+    <p class="error">{{ serverError() }}</p>
+  }
+
+  <button type="submit" [disabled]="loginForm().invalid()">Sign in</button>
+</form>
