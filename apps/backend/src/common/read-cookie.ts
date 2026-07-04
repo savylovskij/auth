@@ -11,7 +11,11 @@ export function readCookie(request: Request, name: string): string | null {
     const [key, ...rest] = part.trim().split('=');
 
     if (key === name) {
-      return decodeURIComponent(rest.join('='));
+      try {
+        return decodeURIComponent(rest.join('='));
+      } catch {
+        return null;
+      }
     }
   }
 

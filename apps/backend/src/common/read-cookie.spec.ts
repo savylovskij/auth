@@ -32,4 +32,8 @@ describe('readCookie', () => {
   it('keeps "=" characters inside the value', () => {
     expect(readCookie(requestWithCookie('token=a=b=c'), 'token')).toBe('a=b=c');
   });
+
+  it('returns null when the value is malformed percent-encoding', () => {
+    expect(readCookie(requestWithCookie('session=%zz'), 'session')).toBeNull();
+  });
 });
