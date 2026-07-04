@@ -1,0 +1,6 @@
+:root {
+  --space-xs: 0.25rem;
+  --space-md: 0.75rem;
+
+  --container-narrow: 320px;
+}

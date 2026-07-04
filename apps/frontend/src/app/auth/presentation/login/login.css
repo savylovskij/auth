@@ -1,18 +1,18 @@
 form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  max-width: 320px;
+  gap: var(--space-md);
+  max-width: var(--container-narrow);
   margin: 4rem auto;
 }
 
 label {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-xs);
 }
 
 .error {
-  color: #c0392b;
+  color: var(--color-danger);
   margin: 0;
 }

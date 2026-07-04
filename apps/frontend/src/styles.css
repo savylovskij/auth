@@ -1,1 +1,8 @@
-/* You can add global styles to this file, and also import other style files */
+@import './styles/abstracts/colors.css';
+@import './styles/abstracts/variables.css';
+@import './styles/vendors/index.css';
+@import './styles/base/reset.css';
+@import './styles/layout/index.css';
+@import './styles/components/index.css';
+@import './styles/pages/index.css';
+@import './styles/themes/index.css';
