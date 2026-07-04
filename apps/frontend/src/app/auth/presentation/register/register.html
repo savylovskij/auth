@@ -1,0 +1,29 @@
+<form (submit)="onSubmit($event)">
+  <h1>Create account</h1>
+
+  <label>
+    Email
+    <input type="email" autocomplete="email" [formField]="registerForm.email" />
+  </label>
+  @if (registerForm.email().touched() && registerForm.email().invalid()) {
+    @for (error of registerForm.email().errors(); track $index) {
+      <p class="error">{{ error.message }}</p>
+    }
+  }
+
+  <label>
+    Password
+    <input type="password" autocomplete="new-password" [formField]="registerForm.password" />
+  </label>
+  @if (registerForm.password().touched() && registerForm.password().invalid()) {
+    @for (error of registerForm.password().errors(); track $index) {
+      <p class="error">{{ error.message }}</p>
+    }
+  }
+
+  @if (serverError()) {
+    <p class="error">{{ serverError() }}</p>
+  }
+
+  <button type="submit" [disabled]="registerForm().invalid()">Create account</button>
+</form>
