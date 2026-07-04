@@ -1,0 +1,26 @@
+<section>
+  <h1>Active sessions</h1>
+
+  <ul>
+    @for (session of sessions(); track session.id) {
+      <li>
+        <div>
+          <strong>{{ session.userAgent ?? 'Unknown device' }}</strong>
+          @if (session.current) {
+            <span>(current)</span>
+          }
+        </div>
+        <div>{{ session.ip ?? 'Unknown IP' }}</div>
+        <div>Signed in {{ session.createdAt | date: 'medium' }}</div>
+
+        @if (!session.current) {
+          <button type="button" (click)="revoke(session.id)">Revoke</button>
+        }
+      </li>
+    } @empty {
+      <li>No active sessions</li>
+    }
+  </ul>
+
+  <button type="button" (click)="logoutAll()">Log out everywhere</button>
+</section>

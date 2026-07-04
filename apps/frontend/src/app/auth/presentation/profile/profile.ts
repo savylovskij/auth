@@ -1,7 +1,6 @@
-import { Component, inject } from '@angular/core';
-import { Router } from '@angular/router';
-
-import { firstValueFrom } from 'rxjs';
+import { Component, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router, RouterLink } from '@angular/router';
 
 import { AuthStore } from '../../application/auth-store';
 
@@ -9,15 +8,21 @@ import { AuthStore } from '../../application/auth-store';
   selector: 'app-profile',
   templateUrl: './profile.html',
   styleUrl: './profile.css',
+  imports: [RouterLink],
 })
 export class Profile {
   private readonly store = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly user = this.store.user;
 
-  async logout(): Promise<void> {
-    await firstValueFrom(this.store.logout());
-    await this.router.navigate(['/login']);
+  logout(): void {
+    this.store
+      .logout()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        void this.router.navigate(['/login']);
+      });
   }
 }
