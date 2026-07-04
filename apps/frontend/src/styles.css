@@ -3,6 +3,6 @@
 @import './styles/vendors/index.css';
 @import './styles/base/reset.css';
 @import './styles/layout/index.css';
-@import './styles/components/index.css';
+@import './styles/components/forms.css';
 @import './styles/pages/index.css';
 @import './styles/themes/index.css';
