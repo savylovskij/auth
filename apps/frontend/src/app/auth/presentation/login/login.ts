@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { email, form, FormField, required, submit } from '@angular/forms/signals';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { firstValueFrom } from 'rxjs';
 
@@ -10,7 +10,7 @@ import { AuthStore } from '../../application/auth-store';
   selector: 'app-login',
   templateUrl: './login.html',
   styleUrl: './login.css',
-  imports: [FormField],
+  imports: [FormField, RouterLink],
 })
 export class Login {
   private readonly store = inject(AuthStore);
