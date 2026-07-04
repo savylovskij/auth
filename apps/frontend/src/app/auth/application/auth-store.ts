@@ -42,4 +42,8 @@ export class AuthStore {
   logoutAll(): Observable<void> {
     return this.logoutAllUseCase.execute().pipe(tap(() => this.#user.set(null)));
   }
+
+  clear(): void {
+    this.#user.set(null);
+  }
 }
