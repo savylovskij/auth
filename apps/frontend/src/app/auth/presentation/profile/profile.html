@@ -1,0 +1,12 @@
+<section>
+  <h1>Profile</h1>
+
+  @if (user(); as currentUser) {
+    <dl>
+      <dt>Email</dt>
+      <dd>{{ currentUser.email }}</dd>
+    </dl>
+  }
+
+  <button type="button" (click)="logout()">Sign out</button>
+</section>
