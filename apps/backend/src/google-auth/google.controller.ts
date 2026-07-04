@@ -1,8 +1,19 @@
-import { BadRequestException, Controller, Get, Headers, Ip, Query, Res } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Headers,
+  Inject,
+  Ip,
+  Query,
+  Res,
+} from '@nestjs/common';
+import type { ConfigType } from '@nestjs/config';
 import { ConfigService } from '@nestjs/config';
 
 import type { Response } from 'express';
 
+import { appConfig } from '../app.config';
 import { setSessionCookie } from '../auth/session-cookie';
 import { Cookie } from '../common/cookie.decorator';
 import { SessionsService } from '../sessions/sessions.service';
@@ -15,6 +26,7 @@ export class GoogleController {
     private readonly google: GoogleService,
     private readonly sessions: SessionsService,
     private readonly config: ConfigService,
+    @Inject(appConfig.KEY) private readonly app: ConfigType<typeof appConfig>,
   ) {}
 
   @Get()
@@ -62,7 +74,7 @@ export class GoogleController {
       isProduction: this.isProduction,
     });
 
-    response.redirect('/auth/me');
+    response.redirect(`${this.app.frontendUrl}/profile`);
   }
 
   private get isProduction(): boolean {
