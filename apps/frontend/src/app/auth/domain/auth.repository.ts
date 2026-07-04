@@ -1,6 +1,7 @@
 import { Observable } from 'rxjs';
 
 import { Credentials } from './credentials';
+import { Session } from './session';
 import { User } from './user';
 
 export abstract class AuthRepository {
@@ -9,4 +10,6 @@ export abstract class AuthRepository {
   abstract me(): Observable<User>;
   abstract logout(): Observable<void>;
   abstract logoutAll(): Observable<void>;
+  abstract sessions(): Observable<Session[]>;
+  abstract revokeSession(id: string): Observable<void>;
 }
