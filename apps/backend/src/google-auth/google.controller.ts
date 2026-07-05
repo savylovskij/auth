@@ -49,23 +49,27 @@ export class GoogleController {
       return;
     }
 
-    const tokens = await this.google.exchangeCode(code);
-    const profile = await this.google.fetchProfile(tokens.accessToken);
-    const user = await this.google.loginWithGoogle(profile);
+    try {
+      const tokens = await this.google.exchangeCode(code);
+      const profile = await this.google.fetchProfile(tokens.accessToken);
+      const user = await this.google.loginWithGoogle(profile);
 
-    const { token, session } = await this.sessions.create(user.id, {
-      userAgent: userAgent ?? null,
-      ip: ip ?? null,
-    });
+      const { token, session } = await this.sessions.create(user.id, {
+        userAgent: userAgent ?? null,
+        ip: ip ?? null,
+      });
 
-    setSessionCookie({
-      response,
-      token,
-      expiresAt: session.expiresAt,
-      isProduction: this.isProduction,
-    });
+      setSessionCookie({
+        response,
+        token,
+        expiresAt: session.expiresAt,
+        isProduction: this.isProduction,
+      });
 
-    response.redirect(`${this.app.frontendUrl}/profile`);
+      response.redirect(`${this.app.frontendUrl}/profile`);
+    } catch {
+      response.redirect(`${this.app.frontendUrl}/login?error=google`);
+    }
   }
 
   private get isProduction(): boolean {

@@ -1,3 +1,4 @@
+import { HttpErrorResponse, HttpStatusCode } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { email, form, FormField, required, submit } from '@angular/forms/signals';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -38,8 +39,12 @@ export class Login {
       try {
         await firstValueFrom(this.store.login(this.model()));
         await this.router.navigate(['/profile']);
-      } catch {
-        this.serverError.set('Invalid email or password');
+      } catch (error) {
+        if (error instanceof HttpErrorResponse && error.status === HttpStatusCode.TooManyRequests) {
+          this.serverError.set('Too many attempts. Try again later');
+        } else {
+          this.serverError.set('Invalid email or password');
+        }
       }
     });
   }
