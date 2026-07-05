@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 
 import { Observable } from 'rxjs';
@@ -7,6 +7,7 @@ import { AuthRepository } from '../domain/auth.repository';
 import { Credentials } from '../domain/credentials';
 import { Session } from '../domain/session';
 import { User } from '../domain/user';
+import { SKIP_AUTH_REDIRECT } from '../shared/auth-http.context';
 
 @Injectable()
 export class AuthHttpRepository implements AuthRepository {
@@ -21,7 +22,10 @@ export class AuthHttpRepository implements AuthRepository {
   }
 
   me(): Observable<User> {
-    return this.http.get<User>('/auth/me', { withCredentials: true });
+    return this.http.get<User>('/auth/me', {
+      withCredentials: true,
+      context: new HttpContext().set(SKIP_AUTH_REDIRECT, true),
+    });
   }
 
   logout(): Observable<void> {
