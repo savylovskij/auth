@@ -1,6 +1,7 @@
 import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_PIPE } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { appConfig } from './app.config';
 import { AppController } from './app.controller';
@@ -16,6 +17,7 @@ import { UsersModule } from './users/users.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [appConfig] }),
+    ScheduleModule.forRoot(),
     AuthModule,
     GoogleModule,
     UsersModule,
