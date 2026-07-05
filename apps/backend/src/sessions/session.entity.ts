@@ -26,7 +26,7 @@ export class Session {
   @JoinColumn({ name: 'userId' })
   user!: User;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamptz' })
   expiresAt!: Date;
 
   @Column({ type: 'varchar', nullable: true })
@@ -35,6 +35,6 @@ export class Session {
   @Column({ type: 'varchar', nullable: true })
   ip!: string | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 }
