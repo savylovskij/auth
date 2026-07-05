@@ -13,6 +13,10 @@ export const authGuard: CanActivateFn = () => {
     return true;
   }
 
+  if (store.isAnonymous()) {
+    return new RedirectCommand(router.createUrlTree(['/login']), { replaceUrl: true });
+  }
+
   return store.loadMe().pipe(
     map(() => true),
     catchError(() =>
