@@ -5,18 +5,16 @@ import { catchError, map, of } from 'rxjs';
 
 import { AuthStore } from '../application/auth-store';
 
-export const authGuard: CanActivateFn = () => {
+export const guestGuard: CanActivateFn = () => {
   const store = inject(AuthStore);
   const router = inject(Router);
 
   if (store.isAuthenticated()) {
-    return true;
+    return new RedirectCommand(router.createUrlTree(['/profile']), { replaceUrl: true });
   }
 
   return store.loadMe().pipe(
-    map(() => true),
-    catchError(() =>
-      of(new RedirectCommand(router.createUrlTree(['/login']), { replaceUrl: true })),
-    ),
+    map(() => new RedirectCommand(router.createUrlTree(['/profile']), { replaceUrl: true })),
+    catchError(() => of(true)),
   );
 };
