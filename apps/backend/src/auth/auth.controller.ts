@@ -60,6 +60,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<User> {
     const user = await this.auth.login(dto);
+    await this.sessions.deleteExpired();
     await this.startSession(user, request, response);
 
     return user;
