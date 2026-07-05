@@ -1,13 +1,4 @@
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  Headers,
-  Inject,
-  Ip,
-  Query,
-  Res,
-} from '@nestjs/common';
+import { Controller, Get, Headers, Inject, Ip, Query, Res } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { ConfigService } from '@nestjs/config';
 
@@ -43,19 +34,19 @@ export class GoogleController {
   async callback(
     @Query('code') code: string,
     @Query('state') state: string,
+    @Query('error') error: string | null,
     @Cookie(OAUTH_STATE_COOKIE) expectedState: string | null,
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string,
     @Res() response: Response,
   ): Promise<void> {
-    if (!state || !expectedState || state !== expectedState) {
-      throw new BadRequestException('Invalid OAuth state');
-    }
-
     clearStateCookie(response, this.isProduction);
 
-    if (!code) {
-      throw new BadRequestException('Missing authorization code');
+    const stateValid = Boolean(state && expectedState && state === expectedState);
+
+    if (!stateValid || error || !code) {
+      response.redirect(`${this.app.frontendUrl}/login?error=google`);
+      return;
     }
 
     const tokens = await this.google.exchangeCode(code);

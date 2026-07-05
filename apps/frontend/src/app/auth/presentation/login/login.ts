@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { email, form, FormField, required, submit } from '@angular/forms/signals';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { firstValueFrom } from 'rxjs';
 
@@ -15,9 +15,14 @@ import { AuthStore } from '../../application/auth-store';
 export class Login {
   private readonly store = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly model = signal({ email: '', password: '' });
-  readonly serverError = signal<string | null>(null);
+  readonly serverError = signal<string | null>(
+    this.route.snapshot.queryParamMap.get('error') === 'google'
+      ? 'Google sign-in was cancelled or failed'
+      : null,
+  );
 
   readonly loginForm = form(this.model, (path) => {
     required(path.email, { message: 'Email is required' });
