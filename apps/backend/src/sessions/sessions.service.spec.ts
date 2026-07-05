@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { MoreThan } from 'typeorm';
+import { LessThan, MoreThan } from 'typeorm';
 
 import { sessionConfig } from './session.config';
 import { Session } from './session.entity';
@@ -207,6 +207,23 @@ describe('SessionsService', () => {
       repo.delete.mockResolvedValue({ affected: 0 });
 
       expect(await service.revokeForUser('s1', 'u1')).toBe(false);
+    });
+  });
+
+  describe('deleteExpired', () => {
+    it('deletes sessions past their expiry and returns the count', async () => {
+      repo.delete.mockResolvedValue({ affected: 3 });
+
+      const count = await service.deleteExpired();
+
+      expect(repo.delete).toHaveBeenCalledWith({ expiresAt: LessThan(new Date(NOW)) });
+      expect(count).toBe(3);
+    });
+
+    it('returns 0 when affected is undefined', async () => {
+      repo.delete.mockResolvedValue({});
+
+      expect(await service.deleteExpired()).toBe(0);
     });
   });
 });

@@ -4,7 +4,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { MoreThan, Repository } from 'typeorm';
+import { LessThan, MoreThan, Repository } from 'typeorm';
 
 import { sessionConfig } from './session.config';
 import { Session } from './session.entity';
@@ -83,6 +83,12 @@ export class SessionsService {
 
   async revokeByUserId(userId: string): Promise<void> {
     await this.sessions.delete({ userId });
+  }
+
+  async deleteExpired(): Promise<number> {
+    const result = await this.sessions.delete({ expiresAt: LessThan(new Date()) });
+
+    return result.affected ?? 0;
   }
 
   private async renewIfNeeded(
