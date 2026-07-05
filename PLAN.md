@@ -73,22 +73,69 @@ Substeps:
 
 ## Step 4. Frontend (Angular)
 
-- [ ] Auth HTTP service (`withCredentials: true` for the cookie).
-- [ ] Pages: registration, login, "Sign in with Google" button.
-- [ ] User state (signal/service), loaded via `GET /auth/me`.
-- [ ] Route guard for protected pages.
-- [ ] HTTP interceptor: handle `401` (redirect to login).
-- [ ] Page/UI with the list of active sessions and a "sign out everywhere" button.
+- [x] Auth HTTP service (`withCredentials: true` for the cookie).
+- [x] Pages: registration, login, "Sign in with Google" button.
+- [x] User state (signal/service), loaded via `GET /auth/me`.
+- [x] Route guard for protected pages.
+- [x] HTTP interceptor: handle `401` (redirect to login).
+- [x] Page/UI with the list of active sessions and a "sign out everywhere" button.
 
 ## Step 5. Hardening (production-readiness)
 
 - [x] Rate limiting via `@nestjs/throttler` (global default + stricter limit on
       `/auth/login` and `/auth/register`), config in its own `ThrottlingModule`.
-- [ ] CORS config for the frontend (origin + credentials).
-- [ ] Cookie hardening: `secure` in prod, consider the `__Host-` prefix.
-- [ ] CSRF strategy (sameSite=lax already in place; decide if a token is needed).
-- [ ] Password strength check / policy.
-- [ ] (Optional) Email verification, password reset.
+- [ ] CORS config for the frontend (origin + credentials). — not implemented
+      (no `enableCors` anywhere in `src/`).
+- [x] Cookie hardening: `secure` in prod + `sameSite=lax` (`cookie-options.ts`).
+- [ ] Cookie `__Host-` prefix (cookie is still named `session`).
+- [ ] CSRF: `sameSite=lax` is in place; decide if an explicit token is also needed.
+- [ ] Password strength check / policy (currently only length 8–64 on register).
+- [ ] Email verification — see Step 6. Password reset — not started.
+
+## Step 6. Email verification (planned)
+
+Goal: prove a registered email is real **and** owned by the user. A syntactic check
+or MX-record lookup is not enough (`1@gmail.com` passes MX because `gmail.com` accepts
+mail; mailbox existence is not exposed by providers). The only reliable method is a
+**confirmation link** — email a single-use tokenized link the user must open. That
+proves mailbox ownership, not just existence (industry standard).
+
+Notes:
+
+- **Google is already verified** — Google returns `emailVerified`; those accounts skip
+  the flow and are marked verified immediately on link. This also resolves the Step 3
+  caveat (local accounts currently unverified).
+- Verification tokens mirror sessions: store only a **hash** of the token, single-use,
+  with an expiry.
+
+Open decisions (settle when the step is reached):
+
+- **Login gating** — hard block (unverified users can't pass `SessionGuard` / can't log
+  in until confirmed) vs. soft (can log in, but the app shows an "unverified" state and
+  restricts sensitive actions). Recommendation: start soft, tighten later.
+- **Dev mail transport** — Mailpit/MailHog in Docker capturing SMTP locally vs. a real
+  provider. Recommendation: Mailpit in `docker-compose`, behind an abstract mail port so
+  the provider can be swapped without touching callers.
+
+Substeps:
+
+- [ ] Data model: `users.emailVerifiedAt` (nullable `timestamptz`) + an
+      `email_verifications` table (`id`, `userId` FK, `tokenHash`, `expiresAt`,
+      `createdAt`). Entities + migration.
+- [ ] Token service: issue a raw token (store its hash) with a TTL; verify + consume
+      (single-use, reject expired/unknown/already-used).
+- [ ] Mail transport: abstract mail port + a dev implementation sending SMTP to Mailpit;
+      add Mailpit to `docker-compose`; config via env.
+- [ ] Register hook: on email registration, create the user unverified, issue a token,
+      and send the confirmation email (link to frontend `/verify-email?token=...`).
+- [ ] Verify endpoint: `POST /auth/verify-email` — validate + consume the token, set
+      `emailVerifiedAt`. Handle invalid / expired / already-verified distinctly.
+- [ ] Resend endpoint: throttled `POST /auth/verify-email/resend` for an unverified user.
+- [ ] Gating: implement the chosen login-gating decision (hard vs soft).
+- [ ] Frontend: "check your email" screen after register; a `/verify-email` landing page
+      that calls the endpoint and shows the result; a resend action; reflect the
+      unverified state in `AuthStore` if gating is soft.
+- [ ] (Optional) Reap expired verification tokens, reusing the expired-session cron.
 
 ## Open questions
 
