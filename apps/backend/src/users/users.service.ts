@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 
 import { User } from './user.entity';
 
@@ -12,13 +12,16 @@ export class UsersService {
     private readonly users: Repository<User>,
   ) {}
 
-  findByEmail(email: string): Promise<User | null> {
-    return this.users.findOne({ where: { email } });
+  findByEmail(email: string, manager?: EntityManager): Promise<User | null> {
+    const repository = manager ? manager.getRepository(User) : this.users;
+
+    return repository.findOne({ where: { email } });
   }
 
-  create(email: string): Promise<User> {
-    const user = this.users.create({ email });
+  create(email: string, manager?: EntityManager): Promise<User> {
+    const repository = manager ? manager.getRepository(User) : this.users;
+    const user = repository.create({ email });
 
-    return this.users.save(user);
+    return repository.save(user);
   }
 }

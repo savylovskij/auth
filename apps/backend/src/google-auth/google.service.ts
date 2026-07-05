@@ -3,7 +3,10 @@ import { randomBytes } from 'node:crypto';
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 
+import { DataSource } from 'typeorm';
+
 import { normalizeEmail } from '../auth/normalize-email';
+import { isUniqueViolation } from '../common/is-unique-violation';
 import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
 import { IdentitiesService } from '../identities/identities.service';
 import type { User } from '../users/user.entity';
@@ -24,6 +27,7 @@ export class GoogleService {
     private readonly config: ConfigType<typeof googleConfig>,
     private readonly users: UsersService,
     private readonly identities: IdentitiesService,
+    private readonly dataSource: DataSource,
   ) {}
 
   createState(): string {
@@ -96,14 +100,36 @@ export class GoogleService {
     }
 
     const email = normalizeEmail(profile.email);
-    const user = (await this.users.findByEmail(email)) ?? (await this.users.create(email));
 
-    await this.identities.create({
-      userId: user.id,
-      provider: AUTH_PROVIDER_LIST.GOOGLE,
-      providerId: profile.sub,
-    });
+    try {
+      return await this.dataSource.transaction(async (manager) => {
+        const user =
+          (await this.users.findByEmail(email, manager)) ??
+          (await this.users.create(email, manager));
 
-    return user;
+        await this.identities.create(
+          {
+            userId: user.id,
+            provider: AUTH_PROVIDER_LIST.GOOGLE,
+            providerId: profile.sub,
+          },
+          manager,
+        );
+
+        return user;
+      });
+    } catch (error) {
+      if (!isUniqueViolation(error)) {
+        throw error;
+      }
+
+      const linked = await this.identities.findByProvider(AUTH_PROVIDER_LIST.GOOGLE, profile.sub);
+
+      if (!linked) {
+        throw error;
+      }
+
+      return linked.user;
+    }
   }
 }

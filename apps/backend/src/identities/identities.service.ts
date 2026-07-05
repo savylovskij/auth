@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 
 import { AuthProvider } from './auth-provider.type';
 import { CreateIdentityParams } from './create-identity.interface';
@@ -21,14 +21,15 @@ export class IdentitiesService {
     });
   }
 
-  create(params: CreateIdentityParams): Promise<Identity> {
-    const identity = this.identities.create({
+  create(params: CreateIdentityParams, manager?: EntityManager): Promise<Identity> {
+    const repository = manager ? manager.getRepository(Identity) : this.identities;
+    const identity = repository.create({
       userId: params.userId,
       provider: params.provider,
       providerId: params.providerId,
       passwordHash: params.passwordHash ?? null,
     });
 
-    return this.identities.save(identity);
+    return repository.save(identity);
   }
 }

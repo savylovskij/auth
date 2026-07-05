@@ -1,7 +1,9 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 
 import * as argon2 from 'argon2';
+import { DataSource } from 'typeorm';
 
+import { isUniqueViolation } from '../common/is-unique-violation';
 import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
 import { IdentitiesService } from '../identities/identities.service';
 import { User } from '../users/user.entity';
@@ -15,6 +17,7 @@ export class AuthService {
   constructor(
     private readonly users: UsersService,
     private readonly identities: IdentitiesService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async register(dto: RegisterDto): Promise<User> {
@@ -26,17 +29,31 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
-    const user = await this.users.create(email);
     const passwordHash = await argon2.hash(dto.password);
 
-    await this.identities.create({
-      userId: user.id,
-      provider: AUTH_PROVIDER_LIST.EMAIL,
-      providerId: email,
-      passwordHash,
-    });
+    try {
+      return await this.dataSource.transaction(async (manager) => {
+        const user = await this.users.create(email, manager);
 
-    return user;
+        await this.identities.create(
+          {
+            userId: user.id,
+            provider: AUTH_PROVIDER_LIST.EMAIL,
+            providerId: email,
+            passwordHash,
+          },
+          manager,
+        );
+
+        return user;
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException('Email already registered');
+      }
+
+      throw error;
+    }
   }
 
   async login(dto: LoginDto): Promise<User> {

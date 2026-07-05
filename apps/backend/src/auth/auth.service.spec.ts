@@ -2,6 +2,7 @@ import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import * as argon2 from 'argon2';
+import { DataSource, EntityManager, QueryFailedError } from 'typeorm';
 
 import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
 import { IdentitiesService } from '../identities/identities.service';
@@ -19,17 +20,24 @@ describe('AuthService', () => {
   let service: AuthService;
   let users: jest.Mocked<Pick<UsersService, 'findByEmail' | 'create'>>;
   let identities: jest.Mocked<Pick<IdentitiesService, 'findByProvider' | 'create'>>;
+  let dataSource: { transaction: jest.Mock };
 
   beforeEach(async () => {
     jest.clearAllMocks();
     users = { findByEmail: jest.fn(), create: jest.fn() };
     identities = { findByProvider: jest.fn(), create: jest.fn() };
+    dataSource = {
+      transaction: jest.fn((cb: (manager: EntityManager) => Promise<unknown>) =>
+        cb({} as EntityManager),
+      ),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: UsersService, useValue: users },
         { provide: IdentitiesService, useValue: identities },
+        { provide: DataSource, useValue: dataSource },
       ],
     }).compile();
 
@@ -52,14 +60,17 @@ describe('AuthService', () => {
         AUTH_PROVIDER_LIST.EMAIL,
         'user@example.com',
       );
-      expect(users.create).toHaveBeenCalledWith('user@example.com');
+      expect(users.create).toHaveBeenCalledWith('user@example.com', expect.anything());
       expect(hash).toHaveBeenCalledWith('secret');
-      expect(identities.create).toHaveBeenCalledWith({
-        userId: 'u1',
-        provider: AUTH_PROVIDER_LIST.EMAIL,
-        providerId: 'user@example.com',
-        passwordHash: 'hashed',
-      });
+      expect(identities.create).toHaveBeenCalledWith(
+        {
+          userId: 'u1',
+          provider: AUTH_PROVIDER_LIST.EMAIL,
+          providerId: 'user@example.com',
+          passwordHash: 'hashed',
+        },
+        expect.anything(),
+      );
     });
 
     it('rejects a duplicate email without creating anything', async () => {
@@ -70,6 +81,21 @@ describe('AuthService', () => {
       ).rejects.toThrow(ConflictException);
       expect(users.create).not.toHaveBeenCalled();
       expect(identities.create).not.toHaveBeenCalled();
+    });
+
+    it('maps a unique violation during the transaction to ConflictException', async () => {
+      const user = { id: 'u1', email: 'user@example.com' } as User;
+
+      identities.findByProvider.mockResolvedValue(null);
+      users.create.mockResolvedValue(user);
+      hash.mockResolvedValue('hashed');
+      identities.create.mockRejectedValue(
+        new QueryFailedError('insert', [], { code: '23505' } as unknown as Error),
+      );
+
+      await expect(
+        service.register({ email: 'user@example.com', password: 'secret' }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

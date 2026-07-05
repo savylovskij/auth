@@ -1,6 +1,8 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
+import { DataSource, EntityManager, QueryFailedError } from 'typeorm';
+
 import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
 import { IdentitiesService } from '../identities/identities.service';
 import { Identity } from '../identities/identity.entity';
@@ -24,10 +26,16 @@ describe('GoogleService', () => {
   let service: GoogleService;
   let users: jest.Mocked<Pick<UsersService, 'findByEmail' | 'create'>>;
   let identities: jest.Mocked<Pick<IdentitiesService, 'findByProvider' | 'create'>>;
+  let dataSource: { transaction: jest.Mock };
 
   beforeEach(async () => {
     users = { findByEmail: jest.fn(), create: jest.fn() };
     identities = { findByProvider: jest.fn(), create: jest.fn() };
+    dataSource = {
+      transaction: jest.fn((cb: (manager: EntityManager) => Promise<unknown>) =>
+        cb({} as EntityManager),
+      ),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -35,6 +43,7 @@ describe('GoogleService', () => {
         { provide: googleConfig.KEY, useValue: CONFIG },
         { provide: UsersService, useValue: users },
         { provide: IdentitiesService, useValue: identities },
+        { provide: DataSource, useValue: dataSource },
       ],
     }).compile();
 
@@ -71,13 +80,16 @@ describe('GoogleService', () => {
       const result = await service.loginWithGoogle(profile({ email: 'User@Example.COM' }));
 
       expect(result).toBe(user);
-      expect(users.findByEmail).toHaveBeenCalledWith('user@example.com');
+      expect(users.findByEmail).toHaveBeenCalledWith('user@example.com', expect.anything());
       expect(users.create).not.toHaveBeenCalled();
-      expect(identities.create).toHaveBeenCalledWith({
-        userId: 'u1',
-        provider: AUTH_PROVIDER_LIST.GOOGLE,
-        providerId: 'google-sub',
-      });
+      expect(identities.create).toHaveBeenCalledWith(
+        {
+          userId: 'u1',
+          provider: AUTH_PROVIDER_LIST.GOOGLE,
+          providerId: 'google-sub',
+        },
+        expect.anything(),
+      );
     });
 
     it('creates a new user and links the identity when no user matches', async () => {
@@ -89,12 +101,32 @@ describe('GoogleService', () => {
       const result = await service.loginWithGoogle(profile());
 
       expect(result).toBe(user);
-      expect(users.create).toHaveBeenCalledWith('user@example.com');
-      expect(identities.create).toHaveBeenCalledWith({
-        userId: 'u2',
-        provider: AUTH_PROVIDER_LIST.GOOGLE,
-        providerId: 'google-sub',
-      });
+      expect(users.create).toHaveBeenCalledWith('user@example.com', expect.anything());
+      expect(identities.create).toHaveBeenCalledWith(
+        {
+          userId: 'u2',
+          provider: AUTH_PROVIDER_LIST.GOOGLE,
+          providerId: 'google-sub',
+        },
+        expect.anything(),
+      );
+    });
+
+    it('recovers from a concurrent-signup unique violation by returning the linked user', async () => {
+      const winner = { id: 'u9' } as User;
+      identities.findByProvider
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ user: winner } as Identity);
+      users.findByEmail.mockResolvedValue(null);
+      users.create.mockResolvedValue({ id: 'u2' } as User);
+      identities.create.mockRejectedValue(
+        new QueryFailedError('insert', [], { code: '23505' } as unknown as Error),
+      );
+
+      const result = await service.loginWithGoogle(profile());
+
+      expect(result).toBe(winner);
+      expect(identities.findByProvider).toHaveBeenCalledTimes(2);
     });
   });
 
