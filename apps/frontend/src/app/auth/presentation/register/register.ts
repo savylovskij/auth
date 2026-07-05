@@ -1,5 +1,6 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
-import { email, form, FormField, required, submit } from '@angular/forms/signals';
+import { email, form, FormField, minLength, required, submit } from '@angular/forms/signals';
 import { Router, RouterLink } from '@angular/router';
 
 import { firstValueFrom } from 'rxjs';
@@ -23,6 +24,7 @@ export class Register {
     required(path.email, { message: 'Email is required' });
     email(path.email, { message: 'Enter a valid email address' });
     required(path.password, { message: 'Password is required' });
+    minLength(path.password, 8, { message: 'Password must be at least 8 characters' });
   });
 
   onSubmit(event: Event): void {
@@ -33,8 +35,12 @@ export class Register {
       try {
         await firstValueFrom(this.store.register(this.model()));
         await this.router.navigate(['/profile']);
-      } catch {
-        this.serverError.set('Could not create account');
+      } catch (error) {
+        if (error instanceof HttpErrorResponse && error.status === 409) {
+          this.serverError.set('This email is already registered');
+        } else {
+          this.serverError.set('Could not create account');
+        }
       }
     });
   }
