@@ -84,8 +84,8 @@ Substeps:
 
 - [x] Rate limiting via `@nestjs/throttler` (global default + stricter limit on
       `/auth/login` and `/auth/register`), config in its own `ThrottlingModule`.
-- [ ] CORS config for the frontend (origin + credentials). — not implemented
-      (no `enableCors` anywhere in `src/`).
+- [x] CORS config for the frontend (origin + credentials) — `enableCors` in
+      `main.ts`, origin from `FRONTEND_URL` (reused `appConfig`), credentials on.
 - [x] Cookie hardening: `secure` in prod + `sameSite=lax` (`cookie-options.ts`).
 - [ ] Cookie `__Host-` prefix (cookie is still named `session`).
 - [ ] CSRF: `sameSite=lax` is in place; decide if an explicit token is also needed.
