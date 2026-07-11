@@ -91,6 +91,14 @@ export class AuthService {
     }
   }
 
+  async resendVerification(user: User): Promise<void> {
+    if (user.emailVerifiedAt) {
+      throw new ConflictException('Email already verified');
+    }
+
+    await this.sendVerificationCode(user.id, user.email);
+  }
+
   private async sendVerificationCode(userId: string, email: string): Promise<void> {
     const code = await this.emailVerifications.createCode(userId);
 

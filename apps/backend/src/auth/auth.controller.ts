@@ -83,6 +83,14 @@ export class AuthController {
     return this.auth.verifyEmail(user, dto.code);
   }
 
+  @Throttle({ default: AUTH_THROTTLE })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(SessionGuard)
+  @Post('verify-email/resend')
+  resendVerification(@CurrentUser() user: User): Promise<void> {
+    return this.auth.resendVerification(user);
+  }
+
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(SessionGuard)
   @Post('logout')

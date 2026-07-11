@@ -149,7 +149,10 @@ Substeps:
       correct→200, repeat→409, `emailVerifiedAt` set, row consumed. Note: within a
       60s window the `AUTH_THROTTLE` (5/min) shadows the 5-attempt lock — the LOCKED
       path is reachable only across throttle windows (both defenses are complementary).
-- [ ] Resend endpoint: throttled `POST /auth/verify-email/resend` for an unverified user.
+- [x] Resend endpoint: throttled `POST /auth/verify-email/resend` (guarded,
+      `@CurrentUser`) → `AuthService.resendVerification`: 409 if already verified,
+      else reissue via `sendVerificationCode` (new code replaces the prior). Verified
+      e2e: 204 + new code, old code→400, new→200, resend-after-verified→409.
 - [ ] Gating: implement the chosen login-gating decision (hard vs soft).
 - [ ] Frontend: "check your email" screen after register; a `/verify-email` landing page
       that calls the endpoint and shows the result; a resend action; reflect the
