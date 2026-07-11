@@ -134,8 +134,10 @@ Substeps:
       argon2-hashed, 10-min TTL, one active per user (deletes prior);
       `verify(userId, code)` → `success | invalid | expired | locked`, single-use
       (consumes on success), increments/caps `attempts` at 5.
-- [ ] Mail transport: abstract mail port + a dev implementation sending SMTP to Mailpit;
-      add Mailpit to `docker-compose`; config via env.
+- [x] Mail transport: abstract `MailPort` + `SmtpMailService` (nodemailer) sending
+      SMTP to Mailpit; `MailModule` binds `MailPort` → `SmtpMailService` and exports
+      it; Mailpit in `docker-compose` (SMTP 1025, UI 8025); config via
+      `mail.config.ts` (`MAIL_HOST`/`MAIL_PORT`/`MAIL_FROM`).
 - [ ] Register hook: on email registration, create the user unverified, issue a token,
       and send the confirmation email (link to frontend `/verify-email?token=...`).
 - [ ] Verify endpoint: `POST /auth/verify-email` — validate + consume the token, set

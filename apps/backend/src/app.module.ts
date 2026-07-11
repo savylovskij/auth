@@ -11,6 +11,7 @@ import { DatabaseModule } from './database/database.module';
 import { EmailVerificationsModule } from './email-verifications/email-verifications.module';
 import { GoogleModule } from './google-auth/google.module';
 import { IdentitiesModule } from './identities/identities.module';
+import { MailModule } from './mail/mail.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { ThrottlingModule } from './throttler/throttling.module';
 import { UsersModule } from './users/users.module';
@@ -20,8 +21,9 @@ import { UsersModule } from './users/users.module';
     ConfigModule.forRoot({ isGlobal: true, load: [appConfig] }),
     ScheduleModule.forRoot(),
     AuthModule,
-    GoogleModule,
+    MailModule,
     UsersModule,
+    GoogleModule,
     DatabaseModule,
     SessionsModule,
     ThrottlingModule,
