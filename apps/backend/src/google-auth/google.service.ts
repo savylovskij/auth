@@ -116,6 +116,10 @@ export class GoogleService {
           manager,
         );
 
+        if (!user.emailVerifiedAt) {
+          return this.users.markEmailVerified(user, manager);
+        }
+
         return user;
       });
     } catch (error) {

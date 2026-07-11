@@ -25,9 +25,10 @@ export class UsersService {
     return repository.save(user);
   }
 
-  markEmailVerified(user: User): Promise<User> {
+  markEmailVerified(user: User, manager?: EntityManager): Promise<User> {
+    const repository = manager ? manager.getRepository(User) : this.users;
     user.emailVerifiedAt = new Date();
 
-    return this.users.save(user);
+    return repository.save(user);
   }
 }

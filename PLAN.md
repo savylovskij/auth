@@ -66,8 +66,9 @@ Substeps:
 - [x] Account linking — **link**. `GoogleService.loginWithGoogle`: if a `google`
       identity for the `sub` exists → its user; else (verified email required)
       find user by email or create one, then attach a new `google` identity.
-      Caveat: we trust Google's verified email; local accounts are currently
-      unverified, so revisit once email verification (Step 5) lands.
+      Since Step 6, the linked/created user is also marked `emailVerifiedAt` in the
+      same transaction (Google's `email_verified` is required), which resolves the
+      earlier caveat about local accounts staying unverified.
 - Note: callback currently redirects to `/auth/me` as a temporary target;
   becomes the frontend URL in Step 4.
 
@@ -107,7 +108,8 @@ Notes:
 
 - **Google is already verified** — Google returns `emailVerified`; those accounts skip
   the flow and are marked verified immediately on link. This also resolves the Step 3
-  caveat (local accounts currently unverified).
+  caveat (local accounts currently unverified). **Done:** `GoogleService.loginWithGoogle`
+  sets `emailVerifiedAt` in the same tx when the user isn't already verified.
 - Verification tokens mirror sessions: store only a **hash** of the token, single-use,
   with an expiry.
 
