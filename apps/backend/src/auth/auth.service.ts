@@ -4,8 +4,10 @@ import * as argon2 from 'argon2';
 import { DataSource } from 'typeorm';
 
 import { isUniqueViolation } from '../common/is-unique-violation';
+import { EmailVerificationsService } from '../email-verifications/email-verifications.service';
 import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
 import { IdentitiesService } from '../identities/identities.service';
+import { MailPort } from '../mail/mail.port';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
@@ -17,6 +19,8 @@ export class AuthService {
   constructor(
     private readonly users: UsersService,
     private readonly identities: IdentitiesService,
+    private readonly emailVerifications: EmailVerificationsService,
+    private readonly mail: MailPort,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -31,13 +35,15 @@ export class AuthService {
 
     const passwordHash = await argon2.hash(dto.password);
 
+    let user: User;
+
     try {
-      return await this.dataSource.transaction(async (manager) => {
-        const user = await this.users.create(email, manager);
+      user = await this.dataSource.transaction(async (manager) => {
+        const created = await this.users.create(email, manager);
 
         await this.identities.create(
           {
-            userId: user.id,
+            userId: created.id,
             provider: AUTH_PROVIDER_LIST.EMAIL,
             providerId: email,
             passwordHash,
@@ -45,7 +51,7 @@ export class AuthService {
           manager,
         );
 
-        return user;
+        return created;
       });
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -54,6 +60,20 @@ export class AuthService {
 
       throw error;
     }
+
+    await this.sendVerificationCode(user.id, email);
+
+    return user;
+  }
+
+  private async sendVerificationCode(userId: string, email: string): Promise<void> {
+    const code = await this.emailVerifications.createCode(userId);
+
+    await this.mail.send({
+      to: email,
+      subject: 'Verify your email',
+      text: `Your verification code is ${code}. It expires in 10 minutes.`,
+    });
   }
 
   async login(dto: LoginDto): Promise<User> {

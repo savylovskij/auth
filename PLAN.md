@@ -138,8 +138,10 @@ Substeps:
       SMTP to Mailpit; `MailModule` binds `MailPort` → `SmtpMailService` and exports
       it; Mailpit in `docker-compose` (SMTP 1025, UI 8025); config via
       `mail.config.ts` (`MAIL_HOST`/`MAIL_PORT`/`MAIL_FROM`).
-- [ ] Register hook: on email registration, create the user unverified, issue a token,
-      and send the confirmation email (link to frontend `/verify-email?token=...`).
+- [x] Register hook: on email registration the user is created unverified
+      (`emailVerifiedAt` null by default); after the tx commits, `AuthService`
+      calls `createCode` and sends the OTP via `MailPort`. Verified e2e against
+      Mailpit (201 + email with 6-digit code + row hashed, attempts 0).
 - [ ] Verify endpoint: `POST /auth/verify-email` — validate + consume the token, set
       `emailVerifiedAt`. Handle invalid / expired / already-verified distinctly.
 - [ ] Resend endpoint: throttled `POST /auth/verify-email/resend` for an unverified user.
