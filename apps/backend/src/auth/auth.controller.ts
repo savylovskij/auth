@@ -70,7 +70,7 @@ export class AuthController {
   @Serialize(UserResponse)
   @UseGuards(SessionGuard)
   @Get('me')
-  me(@CurrentUser() user: User): UserResponse {
+  me(@CurrentUser() user: User): User {
     return user;
   }
 
