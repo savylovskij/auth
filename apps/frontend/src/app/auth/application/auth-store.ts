@@ -11,6 +11,8 @@ import { LoginUseCase } from './login.use-case';
 import { LogoutUseCase } from './logout.use-case';
 import { LogoutAllUseCase } from './logout-all.use-case';
 import { RegisterUseCase } from './register.use-case';
+import { ResendVerificationUseCase } from './resend-verification.use-case';
+import { VerifyEmailUseCase } from './verify-email.use-case';
 
 @Service()
 export class AuthStore {
@@ -19,6 +21,8 @@ export class AuthStore {
   private readonly loadMeUseCase = inject(LoadMeUseCase);
   private readonly logoutUseCase = inject(LogoutUseCase);
   private readonly logoutAllUseCase = inject(LogoutAllUseCase);
+  private readonly verifyEmailUseCase = inject(VerifyEmailUseCase);
+  private readonly resendVerificationUseCase = inject(ResendVerificationUseCase);
 
   readonly #state = signal<AuthState>({ status: AUTH_STATUS.UNKNOWN });
 
@@ -46,6 +50,16 @@ export class AuthStore {
     return this.loadMeUseCase
       .execute()
       .pipe(tap((user) => this.#state.set({ status: AUTH_STATUS.AUTHENTICATED, user })));
+  }
+
+  verifyEmail(code: string): Observable<User> {
+    return this.verifyEmailUseCase
+      .execute(code)
+      .pipe(tap((user) => this.#state.set({ status: AUTH_STATUS.AUTHENTICATED, user })));
+  }
+
+  resendVerification(): Observable<void> {
+    return this.resendVerificationUseCase.execute();
   }
 
   logout(): Observable<void> {

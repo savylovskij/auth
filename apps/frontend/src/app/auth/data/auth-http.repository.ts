@@ -28,6 +28,14 @@ export class AuthHttpRepository implements AuthRepository {
     });
   }
 
+  verifyEmail(code: string): Observable<User> {
+    return this.http.post<User>('/auth/verify-email', { code }, { withCredentials: true });
+  }
+
+  resendVerification(): Observable<void> {
+    return this.http.post<void>('/auth/verify-email/resend', null, { withCredentials: true });
+  }
+
   logout(): Observable<void> {
     return this.http.post<void>('/auth/logout', null, { withCredentials: true });
   }
