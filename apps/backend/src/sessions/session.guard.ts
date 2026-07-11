@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
-import { SESSION_COOKIE, setSessionCookie } from '../auth/session-cookie';
+import { sessionCookieName, setSessionCookie } from '../auth/session-cookie';
 import { readCookie } from '../common/read-cookie';
 import { SessionsService } from './sessions.service';
 
@@ -17,7 +17,8 @@ export class SessionGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const token = readCookie(request, SESSION_COOKIE);
+    const isProduction = this.config.get<string>('NODE_ENV') === 'production';
+    const token = readCookie(request, sessionCookieName(isProduction));
 
     if (!token) {
       throw new UnauthorizedException();
@@ -33,7 +34,6 @@ export class SessionGuard implements CanActivate {
     request.session = session;
 
     const response = context.switchToHttp().getResponse<Response>();
-    const isProduction = this.config.get<string>('NODE_ENV') === 'production';
     setSessionCookie({ response, token, expiresAt: session.expiresAt, isProduction });
 
     return true;

@@ -87,7 +87,8 @@ Substeps:
 - [x] CORS config for the frontend (origin + credentials) — `enableCors` in
       `main.ts`, origin from `FRONTEND_URL` (reused `appConfig`), credentials on.
 - [x] Cookie hardening: `secure` in prod + `sameSite=lax` (`cookie-options.ts`).
-- [ ] Cookie `__Host-` prefix (cookie is still named `session`).
+- [x] Cookie `__Host-` prefix — `__Host-session` in prod (`sessionCookieName`),
+      plain `session` in dev (no HTTPS on localhost).
 - [ ] CSRF: `sameSite=lax` is in place; decide if an explicit token is also needed.
 - [ ] Password strength check / policy (currently only length 8–64 on register).
 - [ ] Email verification — see Step 6. Password reset — not started.
