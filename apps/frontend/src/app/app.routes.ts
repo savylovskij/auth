@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { authGuard } from './auth/presentation/auth.guard';
 import { guestGuard } from './auth/presentation/guest.guard';
+import { verifiedGuard } from './auth/presentation/verified.guard';
 
 export const routes: Routes = [
   {
@@ -16,12 +17,12 @@ export const routes: Routes = [
   },
   {
     path: 'profile',
-    canActivate: [authGuard],
+    canActivate: [authGuard, verifiedGuard],
     loadComponent: () => import('./auth/presentation/profile/profile').then((m) => m.Profile),
   },
   {
     path: 'sessions',
-    canActivate: [authGuard],
+    canActivate: [authGuard, verifiedGuard],
     loadComponent: () => import('./auth/presentation/sessions/sessions').then((m) => m.Sessions),
   },
   {

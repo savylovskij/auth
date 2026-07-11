@@ -29,11 +29,6 @@ export class AuthStore {
   });
   readonly isAuthenticated = computed(() => this.#state().status === AUTH_STATUS.AUTHENTICATED);
   readonly isAnonymous = computed(() => this.#state().status === AUTH_STATUS.ANONYMOUS);
-  readonly isVerified = computed(() => {
-    const state = this.#state();
-
-    return state.status === AUTH_STATUS.AUTHENTICATED && state.user.emailVerified;
-  });
 
   login(credentials: Credentials): Observable<User> {
     return this.loginUseCase
