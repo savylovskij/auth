@@ -19,12 +19,12 @@ import { Session } from './session.entity';
 import { SessionGuard } from './session.guard';
 import { SessionsService } from './sessions.service';
 
+@UseGuards(SessionGuard)
 @Controller('auth/sessions')
 export class SessionsController {
   constructor(private readonly sessions: SessionsService) {}
 
   @Serialize(SessionResponse)
-  @UseGuards(SessionGuard)
   @Get()
   async list(
     @CurrentUser() user: User,
@@ -39,7 +39,6 @@ export class SessionsController {
   }
 
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(SessionGuard)
   @Delete(':id')
   async revoke(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string): Promise<void> {
     const revoked = await this.sessions.revokeForUser(id, user.id);

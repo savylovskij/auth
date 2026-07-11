@@ -115,9 +115,16 @@ Notes:
 
 Open decisions (settle when the step is reached):
 
-- **Login gating** — hard block (unverified users can't pass `SessionGuard` / can't log
-  in until confirmed) vs. soft (can log in, but the app shows an "unverified" state and
-  restricts sensitive actions). Recommendation: start soft, tighten later.
+- **Login gating** — **decided: hard, enforced on the frontend.** An unverified user
+  authenticates (gets a session) but is redirected to the verification screen and
+  cannot reach app routes until verified (`emailVerifiedAt === null`, read via `me`).
+  The **backend has no email guard**: every authenticated route is orthogonal to email
+  verification — the verification flow itself (`verify-email`, `resend`), reading own
+  state (`me`), leaving (`logout`, `logout-all`), and session management
+  (`auth/sessions`, i.e. list + revoke — an account-security tool, not a resource
+  "behind the wall"). `SessionGuard` stays authentication-only. If an email-_dependent_
+  route is ever added (e.g. password reset), that is the natural place for a backend
+  verification gate.
 - **Dev mail transport** — Mailpit/MailHog in Docker capturing SMTP locally vs. a real
   provider. Recommendation: Mailpit in `docker-compose`, behind an abstract mail port so
   the provider can be swapped without touching callers.
@@ -155,7 +162,12 @@ Substeps:
       `@CurrentUser`) → `AuthService.resendVerification`: 409 if already verified,
       else reissue via `sendVerificationCode` (new code replaces the prior). Verified
       e2e: 204 + new code, old code→400, new→200, resend-after-verified→409.
-- [ ] Gating: implement the chosen login-gating decision (hard vs soft).
+- [x] Gating (hard) — backend decision: **no email guard**. Every authenticated route
+      (verification flow, `me`, `logout`/`logout-all`, `auth/sessions`) is orthogonal to
+      email verification, so all stay `SessionGuard`-only; `SessionGuard` is
+      authentication-only. There is no backend resource that email verification should
+      protect. Hard gating itself is enforced on the frontend — see the Frontend substep
+      below (pending).
 - [ ] Frontend: "check your email" screen after register; a `/verify-email` landing page
       that calls the endpoint and shows the result; a resend action; reflect the
       unverified state in `AuthStore` if gating is soft.
