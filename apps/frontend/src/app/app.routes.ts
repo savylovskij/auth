@@ -16,6 +16,12 @@ export const routes: Routes = [
     loadComponent: () => import('./auth/presentation/register/register').then((m) => m.Register),
   },
   {
+    path: 'verify-email',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./auth/presentation/verify-email/verify-email').then((m) => m.VerifyEmail),
+  },
+  {
     path: 'profile',
     canActivate: [authGuard, verifiedGuard],
     loadComponent: () => import('./auth/presentation/profile/profile').then((m) => m.Profile),

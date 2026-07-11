@@ -167,10 +167,16 @@ Substeps:
       email verification, so all stay `SessionGuard`-only; `SessionGuard` is
       authentication-only. There is no backend resource that email verification should
       protect. Hard gating itself is enforced on the frontend — see the Frontend substep
-      below (pending).
-- [ ] Frontend: "check your email" screen after register; a `/verify-email` landing page
-      that calls the endpoint and shows the result; a resend action; reflect the
-      unverified state in `AuthStore` if gating is soft.
+      below.
+- [x] Frontend (hard wall): `me` exposes `emailVerified` (bool derived from
+      `emailVerifiedAt`) → domain `User` → `AuthStore`. `verifiedGuard` stacked after
+      `authGuard` on `/profile` and `/sessions` redirects unverified users to
+      `/verify-email` (`RedirectCommand` + `replaceUrl`). `/verify-email` screen (under
+      `authGuard`): 6-digit OTP form (`pattern(/^\d{6}$/)`) → `store.verifyEmail` (updates
+      state with the now-verified user, then navigates to `/profile`); a resend action →
+      `store.resendVerification`; distinct messages for invalid/expired code (400) and
+      throttling (429). No separate post-login redirect is needed — login/register go to
+      `/profile` and the guard reroutes unverified users automatically.
 - [ ] (Optional) Reap expired verification tokens, reusing the expired-session cron.
 
 ## Open questions

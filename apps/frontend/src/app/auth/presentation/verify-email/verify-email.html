@@ -1,0 +1,32 @@
+<form (submit)="onSubmit($event)">
+  <h1>Verify your email</h1>
+
+  <p>We sent a 6-digit code to your email. Enter it below to verify your account.</p>
+
+  <label>
+    Verification code
+    <input
+      type="text"
+      inputmode="numeric"
+      autocomplete="one-time-code"
+      [formField]="verifyForm.code"
+    />
+  </label>
+  @if (verifyForm.code().touched() && verifyForm.code().invalid()) {
+    @for (error of verifyForm.code().errors(); track $index) {
+      <p class="error">{{ error.message }}</p>
+    }
+  }
+
+  @if (serverError()) {
+    <p class="error">{{ serverError() }}</p>
+  }
+
+  @if (info()) {
+    <p>{{ info() }}</p>
+  }
+
+  <button type="submit" [disabled]="verifyForm().invalid()">Verify</button>
+
+  <button type="button" (click)="resend()">Resend code</button>
+</form>
