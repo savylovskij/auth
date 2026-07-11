@@ -24,4 +24,10 @@ export class UsersService {
 
     return repository.save(user);
   }
+
+  markEmailVerified(user: User): Promise<User> {
+    user.emailVerifiedAt = new Date();
+
+    return this.users.save(user);
+  }
 }

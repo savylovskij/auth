@@ -1,9 +1,15 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 import * as argon2 from 'argon2';
 import { DataSource } from 'typeorm';
 
 import { isUniqueViolation } from '../common/is-unique-violation';
+import { EMAIL_VERIFICATION_RESULT } from '../email-verifications/email-verification-result.constant';
 import { EmailVerificationsService } from '../email-verifications/email-verifications.service';
 import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
 import { IdentitiesService } from '../identities/identities.service';
@@ -64,6 +70,25 @@ export class AuthService {
     await this.sendVerificationCode(user.id, email);
 
     return user;
+  }
+
+  async verifyEmail(user: User, code: string): Promise<User> {
+    if (user.emailVerifiedAt) {
+      throw new ConflictException('Email already verified');
+    }
+
+    const result = await this.emailVerifications.verify(user.id, code);
+
+    switch (result) {
+      case EMAIL_VERIFICATION_RESULT.SUCCESS:
+        return this.users.markEmailVerified(user);
+      case EMAIL_VERIFICATION_RESULT.EXPIRED:
+        throw new BadRequestException('Verification code has expired');
+      case EMAIL_VERIFICATION_RESULT.LOCKED:
+        throw new BadRequestException('Too many attempts, request a new code');
+      default:
+        throw new BadRequestException('Invalid verification code');
+    }
   }
 
   private async sendVerificationCode(userId: string, email: string): Promise<void> {

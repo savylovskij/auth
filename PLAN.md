@@ -142,8 +142,13 @@ Substeps:
       (`emailVerifiedAt` null by default); after the tx commits, `AuthService`
       calls `createCode` and sends the OTP via `MailPort`. Verified e2e against
       Mailpit (201 + email with 6-digit code + row hashed, attempts 0).
-- [ ] Verify endpoint: `POST /auth/verify-email` — validate + consume the token, set
-      `emailVerifiedAt`. Handle invalid / expired / already-verified distinctly.
+- [x] Verify endpoint: `POST /auth/verify-email` (guarded, `@CurrentUser`, throttled)
+      → `AuthService.verifyEmail` maps the OTP result: success sets `emailVerifiedAt`
+      (`UsersService.markEmailVerified`) and consumes the code; already-verified → 409;
+      invalid/expired/locked → distinct 400 messages. Verified e2e: wrong→400,
+      correct→200, repeat→409, `emailVerifiedAt` set, row consumed. Note: within a
+      60s window the `AUTH_THROTTLE` (5/min) shadows the 5-attempt lock — the LOCKED
+      path is reachable only across throttle windows (both defenses are complementary).
 - [ ] Resend endpoint: throttled `POST /auth/verify-email/resend` for an unverified user.
 - [ ] Gating: implement the chosen login-gating decision (hard vs soft).
 - [ ] Frontend: "check your email" screen after register; a `/verify-email` landing page

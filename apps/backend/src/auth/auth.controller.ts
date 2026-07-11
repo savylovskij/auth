@@ -26,6 +26,7 @@ import { User } from '../users/user.entity';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { clearSessionCookie, setSessionCookie } from './session-cookie';
 
 @Controller('auth')
@@ -71,6 +72,15 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: User): UserResponse {
     return user;
+  }
+
+  @Throttle({ default: AUTH_THROTTLE })
+  @Serialize(UserResponse)
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(SessionGuard)
+  @Post('verify-email')
+  verifyEmail(@CurrentUser() user: User, @Body() dto: VerifyEmailDto): Promise<User> {
+    return this.auth.verifyEmail(user, dto.code);
   }
 
   @HttpCode(HttpStatus.NO_CONTENT)
