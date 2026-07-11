@@ -89,8 +89,10 @@ Substeps:
 - [x] Cookie hardening: `secure` in prod + `sameSite=lax` (`cookie-options.ts`).
 - [x] Cookie `__Host-` prefix — `__Host-session` in prod (`sessionCookieName`),
       plain `session` in dev (no HTTPS on localhost).
-- [ ] CSRF: `sameSite=lax` is in place; decide if an explicit token is also needed.
-- [ ] Password strength check / policy (currently only length 8–64 on register).
+- [x] CSRF: decided **no explicit token**. `sameSite=lax` + all mutations on
+      POST/DELETE (no state-changing GETs) close the vector; cookie is `httpOnly` + `Secure`/`__Host-` in prod; Google OAuth has its own `state`. No
+      `sameSite=none` need, so a synchronizer/double-submit token is redundant
+      for this scope.
 - [ ] Email verification — see Step 6. Password reset — not started.
 
 ## Step 6. Email verification (planned)
@@ -120,11 +122,18 @@ Open decisions (settle when the step is reached):
 
 Substeps:
 
-- [ ] Data model: `users.emailVerifiedAt` (nullable `timestamptz`) + an
-      `email_verifications` table (`id`, `userId` FK, `tokenHash`, `expiresAt`,
-      `createdAt`). Entities + migration.
-- [ ] Token service: issue a raw token (store its hash) with a TTL; verify + consume
-      (single-use, reject expired/unknown/already-used).
+- Decision: verification via **6-digit OTP** (not a magic link). Rationale: web +
+  soft gating (user is logged in but unverified after register), so a code
+  form is natural. Guards against brute-force of the short code: 10-min TTL,
+  max 5 attempts then burn, lookup scoped to `currentUser` (no cross-user
+  enumeration), plus the global throttler.
+- [x] Data model: `users.emailVerifiedAt` (nullable `timestamptz`) + an
+      `email_verifications` table (`id`, `userId` FK, `codeHash`, `expiresAt`,
+      `attempts`, `createdAt`). Entities + migration (`AddEmailVerification`).
+- [x] Token service (`EmailVerificationsService`): `createCode(userId)` → 6-digit OTP,
+      argon2-hashed, 10-min TTL, one active per user (deletes prior);
+      `verify(userId, code)` → `success | invalid | expired | locked`, single-use
+      (consumes on success), increments/caps `attempts` at 5.
 - [ ] Mail transport: abstract mail port + a dev implementation sending SMTP to Mailpit;
       add Mailpit to `docker-compose`; config via env.
 - [ ] Register hook: on email registration, create the user unverified, issue a token,

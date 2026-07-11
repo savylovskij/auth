@@ -14,6 +14,9 @@ export class User {
   @Column({ unique: true })
   email!: string;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  emailVerifiedAt!: Date | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 
