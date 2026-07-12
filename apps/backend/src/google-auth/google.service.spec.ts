@@ -76,8 +76,8 @@ describe('GoogleService', () => {
       expect(identities.create).not.toHaveBeenCalled();
     });
 
-    it('links a google identity to an existing user found by email', async () => {
-      const user = { id: 'u1' } as User;
+    it('links a google identity to an existing user with a verified email', async () => {
+      const user = { id: 'u1', emailVerifiedAt: new Date() } as User;
       identities.findByProvider.mockResolvedValue(null);
       users.findByEmail.mockResolvedValue(user);
 
@@ -86,6 +86,7 @@ describe('GoogleService', () => {
       expect(result).toBe(user);
       expect(users.findByEmail).toHaveBeenCalledWith('user@example.com', expect.anything());
       expect(users.create).not.toHaveBeenCalled();
+      expect(users.markEmailVerified).not.toHaveBeenCalled();
       expect(identities.create).toHaveBeenCalledWith(
         {
           userId: 'u1',
@@ -94,6 +95,15 @@ describe('GoogleService', () => {
         },
         expect.anything(),
       );
+    });
+
+    it('refuses to link to an existing user whose email is not verified', async () => {
+      identities.findByProvider.mockResolvedValue(null);
+      users.findByEmail.mockResolvedValue({ id: 'u1', emailVerifiedAt: null } as User);
+
+      await expect(service.loginWithGoogle(profile())).rejects.toThrow(UnauthorizedException);
+      expect(identities.create).not.toHaveBeenCalled();
+      expect(users.markEmailVerified).not.toHaveBeenCalled();
     });
 
     it('creates a new user and links the identity when no user matches', async () => {

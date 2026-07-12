@@ -1,8 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, RedirectCommand, Router } from '@angular/router';
 
-import { catchError, map, of } from 'rxjs';
-
 import { AuthStore } from '../application/auth-store';
 
 export const authGuard: CanActivateFn = () => {
@@ -13,14 +11,5 @@ export const authGuard: CanActivateFn = () => {
     return true;
   }
 
-  if (store.isAnonymous()) {
-    return new RedirectCommand(router.createUrlTree(['/login']), { replaceUrl: true });
-  }
-
-  return store.loadMe().pipe(
-    map(() => true),
-    catchError(() =>
-      of(new RedirectCommand(router.createUrlTree(['/login']), { replaceUrl: true })),
-    ),
-  );
+  return new RedirectCommand(router.createUrlTree(['/login']), { replaceUrl: true });
 };

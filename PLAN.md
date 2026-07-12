@@ -226,7 +226,7 @@ Substeps:
       `ExpiredPasswordResetsCleaner` (`@Cron` daily at midnight), mirroring
       `ExpiredSessionsCleaner`.
 
-## Step 8. Defer account creation until email is verified (in progress)
+## Step 8. Defer account creation until email is verified (done)
 
 Goal: close a **pre-account takeover** vulnerability (plus email-squatting) rooted in
 the current flow, where `register` creates a full `users` + `identities` (password)
@@ -281,26 +281,38 @@ Substeps:
 - [x] Data model: `PendingRegistration` entity + migration (`AddPendingRegistrations`) —
       `email` unique, `passwordHash`, `codeHash`, `expiresAt`, `attempts`, `createdAt`. No
       `userId`/FK (no account exists yet). Migration applied.
-- [ ] `PendingRegistrationsService`: `createPending(email, password)` (argon2-hash both the
+- [x] `PendingRegistrationsService`: `createPending(email, password)` (argon2-hash both the
       password and a 6-digit OTP, 10-min TTL, one active per email — deletes prior);
-      `verify(email, code)` → `success | invalid | expired | locked`, single-use, caps
-      `attempts` at 5. Module with `forFeature([PendingRegistration])`.
-- [ ] `AuthService.register`: write a pending row + send OTP instead of creating the
-      account/session. Existing **verified** email → 409 (as today); existing pending → replace.
-- [ ] `AuthService.verifyEmail(email, code)`: on success create `users` + `identities` in a
-      tx (handle the unique-email race → "already registered, please log in"), delete the
-      pending row, issue the session. `verify-email` and `verify-email/resend` become public
-      `{ email, code }` / `{ email }` endpoints — **no** `SessionGuard`/`@CurrentUser`.
-- [ ] Frontend: `register` no longer sets `AUTHENTICATED`; navigates to `/verify-email?email=…`
-      (like the reset flow). `/verify-email` screen collects email (prefilled) + code, calls
-      `store.verifyEmail`, on success sets `AUTHENTICATED` → `/profile`. Move `/verify-email`
-      route under `guestGuard` (drop `authGuard + unverifiedGuard`); the guard-race (Step 9)
-      for this route dissolves as a side effect.
-- [ ] Reap expired pending rows: `deleteExpired()` + a `@Cron` cleaner, mirroring the other
+      `verify(email, code)` → `success | invalid | expired | locked` (does **not** consume on
+      success — the row is consumed inside the provisioning tx); `refreshCode(email)` for resend
+      (new OTP + fresh TTL + reset attempts, keeps `passwordHash`; `null` if no pending);
+      `findByEmail`/`deleteByEmail` (with `manager`) for the tx. Module with
+      `forFeature([PendingRegistration])`.
+- [x] `AuthService.register`: writes a pending row + sends the OTP instead of creating the
+      account/session; returns 204. Duplicate check via `users.findByEmail` (any existing
+      account → 409, covers Google-only too); existing pending is replaced by `createPending`.
+- [x] `AuthService.verifyEmail(email, code)`: validates the OTP, then in one tx creates
+      `users` + `identities(EMAIL, passwordHash from pending)`, sets `emailVerifiedAt`, deletes
+      the pending row, and returns the user; unique-email race → 409. `resendVerification(email)`
+      → `refreshCode` + mail, silent if no pending (anti-enumeration). `verify-email` (issues the
+      session) and `verify-email/resend` are public `{ email, code }` / `{ email }` endpoints —
+      **no** `SessionGuard`/`@CurrentUser`. Verified backend e2e against Mailpit (register 204 →
+      verify 200 + session → login 200; dup 409, wrong code 400, login-before-verify 401).
+- [x] Frontend: `register` no longer sets `AUTHENTICATED`; navigates to `/verify-email?email=…`.
+      Domain `EmailVerification { email; code }`; repository/use-cases/store signatures updated
+      (`register → void`, `verifyEmail(verification)`, `resendVerification(email)`).
+      `/verify-email` screen collects email (prefilled from the query) + code → `store.verifyEmail`
+      → `AUTHENTICATED` → `/profile`; resend uses the form email. `/verify-email` moved under
+      `guestGuard`; dead `unverifiedGuard` deleted (the original "verified user stuck on
+      /verify-email" bug dissolves as a side effect). Verified with a real browser e2e
+      (register → verify → /profile, reload persists, login works).
+- [x] Reap expired pending rows: `PendingRegistrationsService.deleteExpired()` +
+      `ExpiredPendingRegistrationsCleaner` (`@Cron` daily at midnight), mirroring the other
       token cleaners.
-- [ ] Remove `email_verifications` entirely (entity, service, cleaner, module, result
-      type/const) once nothing references it; drop the table via a migration. Update
-      `AuthModule` wiring and any specs.
+- [x] Removed `email_verifications` entirely (entity, service, cleaner, module, result
+      type/const); dropped the table via a hand-written migration (`DropEmailVerifications` —
+      TypeORM does not auto-drop orphaned tables), leaving `users.emailVerifiedAt` intact.
+      `AuthModule` wiring updated; specs already off it.
 
 ## Step 9. Fix the frontend guard race (planned)
 

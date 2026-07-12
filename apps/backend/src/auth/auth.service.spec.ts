@@ -196,22 +196,22 @@ describe('AuthService', () => {
       expect(verify).toHaveBeenCalledWith('hashed', 'secret');
     });
 
-    it('rejects when no identity exists for the email', async () => {
+    it('rejects an unknown email after a decoy verification', async () => {
       identities.findByProvider.mockResolvedValue(null);
 
       await expect(
         service.login({ email: 'user@example.com', password: 'secret' }),
       ).rejects.toThrow(UnauthorizedException);
-      expect(verify).not.toHaveBeenCalled();
+      expect(verify).toHaveBeenCalledTimes(1);
     });
 
-    it('rejects when the identity has no password hash', async () => {
+    it('rejects a google-only identity after a decoy verification', async () => {
       identities.findByProvider.mockResolvedValue({ passwordHash: null } as Identity);
 
       await expect(
         service.login({ email: 'user@example.com', password: 'secret' }),
       ).rejects.toThrow(UnauthorizedException);
-      expect(verify).not.toHaveBeenCalled();
+      expect(verify).toHaveBeenCalledTimes(1);
     });
 
     it('rejects when the password does not match', async () => {

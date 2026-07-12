@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 
@@ -9,8 +10,10 @@ import * as argon2 from 'argon2';
 import { DataSource } from 'typeorm';
 
 import { isUniqueViolation } from '../common/is-unique-violation';
+import { verifyDecoyHash } from '../common/verify-decoy-hash';
 import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
 import { IdentitiesService } from '../identities/identities.service';
+import { Identity } from '../identities/identity.entity';
 import { MailPort } from '../mail/mail.port';
 import { PASSWORD_RESET_RESULT } from '../password-resets/password-reset-result.constant';
 import { PasswordResetsService } from '../password-resets/password-resets.service';
@@ -25,6 +28,8 @@ import { normalizeEmail } from './normalize-email';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly users: UsersService,
     private readonly identities: IdentitiesService,
@@ -124,6 +129,8 @@ export class AuthService {
     const identity = await this.identities.findByProvider(AUTH_PROVIDER_LIST.EMAIL, email);
 
     if (!identity?.passwordHash) {
+      await verifyDecoyHash(credentials.password);
+
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -146,6 +153,12 @@ export class AuthService {
       return;
     }
 
+    void this.sendPasswordResetCode(identity).catch((error: unknown) =>
+      this.logger.error(`Failed to send password reset code to user ${identity.userId}`, error),
+    );
+  }
+
+  private async sendPasswordResetCode(identity: Identity): Promise<void> {
     const code = await this.passwordResets.createCode(identity.userId);
 
     await this.mail.send({
@@ -162,6 +175,8 @@ export class AuthService {
     );
 
     if (!identity) {
+      await verifyDecoyHash(code);
+
       throw new BadRequestException('Invalid password reset code');
     }
 

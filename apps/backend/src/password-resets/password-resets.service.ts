@@ -6,6 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as argon2 from 'argon2';
 import { LessThan, Repository } from 'typeorm';
 
+import { verifyDecoyHash } from '../common/verify-decoy-hash';
 import { PasswordReset } from './password-reset.entity';
 import { PASSWORD_RESET_RESULT } from './password-reset-result.constant';
 import { PasswordResetResult } from './password-reset-result.type';
@@ -42,6 +43,8 @@ export class PasswordResetsService {
     const reset = await this.resets.findOne({ where: { userId } });
 
     if (!reset) {
+      await verifyDecoyHash(code);
+
       return PASSWORD_RESET_RESULT.INVALID;
     }
 

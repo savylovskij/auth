@@ -103,9 +103,13 @@ export class GoogleService {
 
     try {
       return await this.dataSource.transaction(async (manager) => {
-        const user =
-          (await this.users.findByEmail(email, manager)) ??
-          (await this.users.create(email, manager));
+        const existingUser = await this.users.findByEmail(email, manager);
+
+        if (existingUser && !existingUser.emailVerifiedAt) {
+          throw new UnauthorizedException('Account email is not verified');
+        }
+
+        const user = existingUser ?? (await this.users.create(email, manager));
 
         await this.identities.create(
           {

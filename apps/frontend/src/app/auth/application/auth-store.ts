@@ -1,6 +1,6 @@
 import { computed, inject, Service, signal } from '@angular/core';
 
-import { Observable, tap } from 'rxjs';
+import { firstValueFrom, Observable, tap } from 'rxjs';
 
 import { Credentials } from '../domain/credentials';
 import { EmailVerification } from '../domain/email-verification';
@@ -40,6 +40,16 @@ export class AuthStore {
   readonly isAuthenticated = computed(() => this.#state().status === AUTH_STATUS.AUTHENTICATED);
   readonly isAnonymous = computed(() => this.#state().status === AUTH_STATUS.ANONYMOUS);
 
+  async initialize(): Promise<void> {
+    try {
+      const user = await firstValueFrom(this.loadMeUseCase.execute());
+
+      this.#state.set({ status: AUTH_STATUS.AUTHENTICATED, user });
+    } catch {
+      this.clear();
+    }
+  }
+
   login(credentials: Credentials): Observable<User> {
     return this.loginUseCase
       .execute(credentials)
@@ -48,12 +58,6 @@ export class AuthStore {
 
   register(credentials: Credentials): Observable<void> {
     return this.registerUseCase.execute(credentials);
-  }
-
-  loadMe(): Observable<User> {
-    return this.loadMeUseCase
-      .execute()
-      .pipe(tap((user) => this.#state.set({ status: AUTH_STATUS.AUTHENTICATED, user })));
   }
 
   verifyEmail(verification: EmailVerification): Observable<User> {
