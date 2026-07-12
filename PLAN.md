@@ -226,10 +226,99 @@ Substeps:
       `ExpiredPasswordResetsCleaner` (`@Cron` daily at midnight), mirroring
       `ExpiredSessionsCleaner`.
 
+## Step 8. Defer account creation until email is verified (in progress)
+
+Goal: close a **pre-account takeover** vulnerability (plus email-squatting) rooted in
+the current flow, where `register` creates a full `users` + `identities` (password)
+row on an **unverified** email and issues a session immediately.
+
+Threat this closes:
+
+- **Pre-account takeover via Google.** Attacker registers `victim@gmail.com` with their
+  own password (email stays unverified — they don't own the inbox). Later the victim
+  "Sign in with Google": `GoogleService.loginWithGoogle` does `findByEmail` → finds the
+  attacker's account, links Google, marks it verified. The account is now shared — the
+  attacker keeps persistent access via their password (`logout-all` doesn't help; they
+  know the password).
+- **Email-squatting.** Registering an email reserves it in `users` (unique), so an
+  attacker can block a victim's normal registration and trigger verification spam to a
+  foreign address.
+
+Root cause: an unverified email is treated as an owned identity (account + password
+exist, and are trusted, before ownership is ever proven).
+
+Fix — **staging table `pending_registrations`** (verify-before-account):
+
+- `register(email, password)` writes **only** a pending row (`email` unique,
+  `passwordHash`, `codeHash` OTP, `expiresAt`, `attempts`, `createdAt`) — **no** `users`,
+  **no** `identities`, **no** session — and emails the OTP.
+- `verify-email(email, code)` in one tx: creates the real `users` + `identities(EMAIL)`,
+  sets `emailVerifiedAt`, deletes the pending row, **and now** issues the session.
+- Effect: `users` only ever holds emails whose ownership was **proven** (our OTP or
+  Google). `GoogleService.findByEmail` can never return an untrusted password account →
+  takeover gone. Pending rows reserve nothing → squatting gone. The attacker's pending
+  never becomes real because the OTP goes to the **victim's** inbox.
+
+Decisions:
+
+- **`email_verifications` is dropped, not kept.** The OTP now lives on the pending row
+  (`pending_registrations.codeHash`), keyed by `email` — there is no `userId` yet, so the
+  `userId`-FK `email_verifications` table cannot hold it. This new flow **subsumes** the
+  old registration-verification role of `email_verifications`, so the table + entity +
+  service + cleaner + module are removed (and the table dropped via migration). If an
+  email-_change_ flow (re-verify a new address on an existing account) is ever needed,
+  it gets its own `userId`-keyed mechanism then.
+- **Trade-off (accepted): registration no longer logs the user in.** Flow shifts from
+  "session on register + soft gate" to verify-before-access — register → enter OTP → then
+  session. Coherent with the whole point of the project (OTP verification), but it is a
+  conscious reversal of the earlier "session on register" behavior.
+- **Ordering:** `email_verifications` is live (wired through `AuthService`,
+  `AuthController`, `AuthModule` + the frontend), so it is removed **last** — only after
+  register/verify are rewritten onto `pending_registrations`, to never break the build.
+
+Substeps:
+
+- [x] Data model: `PendingRegistration` entity + migration (`AddPendingRegistrations`) —
+      `email` unique, `passwordHash`, `codeHash`, `expiresAt`, `attempts`, `createdAt`. No
+      `userId`/FK (no account exists yet). Migration applied.
+- [ ] `PendingRegistrationsService`: `createPending(email, password)` (argon2-hash both the
+      password and a 6-digit OTP, 10-min TTL, one active per email — deletes prior);
+      `verify(email, code)` → `success | invalid | expired | locked`, single-use, caps
+      `attempts` at 5. Module with `forFeature([PendingRegistration])`.
+- [ ] `AuthService.register`: write a pending row + send OTP instead of creating the
+      account/session. Existing **verified** email → 409 (as today); existing pending → replace.
+- [ ] `AuthService.verifyEmail(email, code)`: on success create `users` + `identities` in a
+      tx (handle the unique-email race → "already registered, please log in"), delete the
+      pending row, issue the session. `verify-email` and `verify-email/resend` become public
+      `{ email, code }` / `{ email }` endpoints — **no** `SessionGuard`/`@CurrentUser`.
+- [ ] Frontend: `register` no longer sets `AUTHENTICATED`; navigates to `/verify-email?email=…`
+      (like the reset flow). `/verify-email` screen collects email (prefilled) + code, calls
+      `store.verifyEmail`, on success sets `AUTHENTICATED` → `/profile`. Move `/verify-email`
+      route under `guestGuard` (drop `authGuard + unverifiedGuard`); the guard-race (Step 9)
+      for this route dissolves as a side effect.
+- [ ] Reap expired pending rows: `deleteExpired()` + a `@Cron` cleaner, mirroring the other
+      token cleaners.
+- [ ] Remove `email_verifications` entirely (entity, service, cleaner, module, result
+      type/const) once nothing references it; drop the table via a migration. Update
+      `AuthModule` wiring and any specs.
+
+## Step 9. Fix the frontend guard race (planned)
+
+`unverifiedGuard`/`verifiedGuard` read `store.user()` synchronously while `authGuard` is
+still loading `me()` — the `canActivate` array runs guards concurrently, not in sequence.
+On a full reload / direct URL, the verification guard sees `null` and mis-routes (a verified
+user stays on `/verify-email`; `/profile` bounces to `/verify-email`). Fix: the verification
+guards must await the resolved auth state (e.g. an `AuthStore.ensureLoaded()` that returns the
+current state or loads `me()` first), instead of reading a possibly-`UNKNOWN` signal. Step 8
+removes the `/verify-email` case; this step covers the remaining `/profile` + `/sessions` case.
+
 ## Open questions
 
 - argon2 vs bcrypt.
 - ~~Behavior on email collision~~ — decided: link the Google identity to the
-  existing user by email (see Step 3).
+  existing user by email (see Step 3), refined by Step 8 (only verified emails ever exist
+  in `users`, so Google linking can no longer hit an untrusted unverified account).
 - ~~Whether email verification and password reset are in scope for this project.~~ —
   decided: both in scope and implemented (see Steps 6 and 7).
+- ~~Keep `email_verifications` after Step 8?~~ — decided: **drop it**; the pending-registration
+  flow subsumes its only role (see Step 8).
