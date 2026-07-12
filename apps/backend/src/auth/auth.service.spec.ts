@@ -4,9 +4,11 @@ import { Test } from '@nestjs/testing';
 import * as argon2 from 'argon2';
 import { DataSource, EntityManager, QueryFailedError } from 'typeorm';
 
+import { EmailVerificationsService } from '../email-verifications/email-verifications.service';
 import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
 import { IdentitiesService } from '../identities/identities.service';
 import { Identity } from '../identities/identity.entity';
+import { MailPort } from '../mail/mail.port';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
@@ -20,12 +22,16 @@ describe('AuthService', () => {
   let service: AuthService;
   let users: jest.Mocked<Pick<UsersService, 'findByEmail' | 'create'>>;
   let identities: jest.Mocked<Pick<IdentitiesService, 'findByProvider' | 'create'>>;
+  let emailVerifications: jest.Mocked<Pick<EmailVerificationsService, 'createCode'>>;
+  let mail: jest.Mocked<Pick<MailPort, 'send'>>;
   let dataSource: { transaction: jest.Mock };
 
   beforeEach(async () => {
     jest.clearAllMocks();
     users = { findByEmail: jest.fn(), create: jest.fn() };
     identities = { findByProvider: jest.fn(), create: jest.fn() };
+    emailVerifications = { createCode: jest.fn().mockResolvedValue('123456') };
+    mail = { send: jest.fn().mockResolvedValue(undefined) };
     dataSource = {
       transaction: jest.fn((cb: (manager: EntityManager) => Promise<unknown>) =>
         cb({} as EntityManager),
@@ -37,6 +43,8 @@ describe('AuthService', () => {
         AuthService,
         { provide: UsersService, useValue: users },
         { provide: IdentitiesService, useValue: identities },
+        { provide: EmailVerificationsService, useValue: emailVerifications },
+        { provide: MailPort, useValue: mail },
         { provide: DataSource, useValue: dataSource },
       ],
     }).compile();

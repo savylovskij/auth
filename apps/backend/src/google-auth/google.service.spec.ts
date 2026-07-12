@@ -24,12 +24,16 @@ function profile(overrides: Partial<GoogleProfile> = {}): GoogleProfile {
 
 describe('GoogleService', () => {
   let service: GoogleService;
-  let users: jest.Mocked<Pick<UsersService, 'findByEmail' | 'create'>>;
+  let users: jest.Mocked<Pick<UsersService, 'findByEmail' | 'create' | 'markEmailVerified'>>;
   let identities: jest.Mocked<Pick<IdentitiesService, 'findByProvider' | 'create'>>;
   let dataSource: { transaction: jest.Mock };
 
   beforeEach(async () => {
-    users = { findByEmail: jest.fn(), create: jest.fn() };
+    users = {
+      findByEmail: jest.fn(),
+      create: jest.fn(),
+      markEmailVerified: jest.fn((user: User) => Promise.resolve(user)),
+    };
     identities = { findByProvider: jest.fn(), create: jest.fn() };
     dataSource = {
       transaction: jest.fn((cb: (manager: EntityManager) => Promise<unknown>) =>
