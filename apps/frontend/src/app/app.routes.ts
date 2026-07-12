@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from './auth/presentation/auth.guard';
+import { emailQueryParamGuard } from './auth/presentation/email-query-param.guard';
 import { guestGuard } from './auth/presentation/guest.guard';
 import { verifiedGuard } from './auth/presentation/verified.guard';
 
@@ -23,13 +24,13 @@ export const routes: Routes = [
   },
   {
     path: 'reset-password',
-    canActivate: [guestGuard],
+    canActivate: [guestGuard, emailQueryParamGuard],
     loadComponent: () =>
       import('./auth/presentation/reset-password/reset-password').then((m) => m.ResetPassword),
   },
   {
     path: 'verify-email',
-    canActivate: [guestGuard],
+    canActivate: [guestGuard, emailQueryParamGuard],
     loadComponent: () =>
       import('./auth/presentation/verify-email/verify-email').then((m) => m.VerifyEmail),
   },

@@ -1,7 +1,6 @@
 import { HttpErrorResponse, HttpStatusCode } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import {
-  email,
   form,
   FormField,
   maxLength,
@@ -27,18 +26,15 @@ export class ResetPassword {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
-  private readonly email = this.route.snapshot.queryParamMap.get('email') ?? '';
+  readonly email = this.route.snapshot.queryParamMap.get('email') ?? '';
 
   readonly model = signal({
-    email: this.email,
     code: '',
     newPassword: '',
   });
   readonly serverError = signal<string | null>(null);
 
   readonly resetForm = form(this.model, (path) => {
-    required(path.email, { message: 'Email is required' });
-    email(path.email, { message: 'Enter a valid email address' });
     required(path.code, { message: 'Code is required' });
     pattern(path.code, /^\d{6}$/, { message: 'Enter the 6-digit code' });
     required(path.newPassword, { message: 'Password is required' });
@@ -52,7 +48,7 @@ export class ResetPassword {
 
     void submit(this.resetForm, async () => {
       try {
-        await firstValueFrom(this.store.resetPassword(this.model()));
+        await firstValueFrom(this.store.resetPassword({ email: this.email, ...this.model() }));
         await this.router.navigate(['/login']);
       } catch (error) {
         if (error instanceof HttpErrorResponse && error.status === HttpStatusCode.TooManyRequests) {

@@ -1,17 +1,7 @@
 <form (submit)="onSubmit($event)">
   <h1>Verify your email</h1>
 
-  <p>We sent a 6-digit code to your email. Enter it below to verify your account.</p>
-
-  <label>
-    Email
-    <input type="email" autocomplete="email" [formField]="verifyForm.email" />
-  </label>
-  @if (verifyForm.email().touched() && verifyForm.email().invalid()) {
-    @for (error of verifyForm.email().errors(); track $index) {
-      <p class="error">{{ error.message }}</p>
-    }
-  }
+  <p>We sent a 6-digit code to {{ email }}. Enter it below to verify your account.</p>
 
   <label>
     Verification code
