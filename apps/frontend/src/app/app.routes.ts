@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { authGuard } from './auth/presentation/auth.guard';
 import { guestGuard } from './auth/presentation/guest.guard';
+import { unverifiedGuard } from './auth/presentation/unverified.guard';
 import { verifiedGuard } from './auth/presentation/verified.guard';
 
 export const routes: Routes = [
@@ -17,7 +18,7 @@ export const routes: Routes = [
   },
   {
     path: 'verify-email',
-    canActivate: [authGuard],
+    canActivate: [authGuard, unverifiedGuard],
     loadComponent: () =>
       import('./auth/presentation/verify-email/verify-email').then((m) => m.VerifyEmail),
   },
