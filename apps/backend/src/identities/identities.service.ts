@@ -32,4 +32,8 @@ export class IdentitiesService {
 
     return repository.save(identity);
   }
+
+  async updatePassword(id: string, passwordHash: string): Promise<void> {
+    await this.identities.update({ id }, { passwordHash });
+  }
 }

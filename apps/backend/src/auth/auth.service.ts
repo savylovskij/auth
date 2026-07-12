@@ -14,6 +14,9 @@ import { EmailVerificationsService } from '../email-verifications/email-verifica
 import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
 import { IdentitiesService } from '../identities/identities.service';
 import { MailPort } from '../mail/mail.port';
+import { PASSWORD_RESET_RESULT } from '../password-resets/password-reset-result.constant';
+import { PasswordResetsService } from '../password-resets/password-resets.service';
+import { SessionsService } from '../sessions/sessions.service';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
@@ -26,6 +29,8 @@ export class AuthService {
     private readonly users: UsersService,
     private readonly identities: IdentitiesService,
     private readonly emailVerifications: EmailVerificationsService,
+    private readonly passwordResets: PasswordResetsService,
+    private readonly sessions: SessionsService,
     private readonly mail: MailPort,
     private readonly dataSource: DataSource,
   ) {}
@@ -125,5 +130,51 @@ export class AuthService {
     }
 
     return identity.user;
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const identity = await this.identities.findByProvider(
+      AUTH_PROVIDER_LIST.EMAIL,
+      normalizeEmail(email),
+    );
+
+    if (!identity) {
+      return;
+    }
+
+    const code = await this.passwordResets.createCode(identity.userId);
+
+    await this.mail.send({
+      to: identity.providerId,
+      subject: 'Reset your password',
+      text: `Your password reset code is ${code}. It expires in 10 minutes.`,
+    });
+  }
+
+  async resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+    const identity = await this.identities.findByProvider(
+      AUTH_PROVIDER_LIST.EMAIL,
+      normalizeEmail(email),
+    );
+
+    if (!identity) {
+      throw new BadRequestException('Invalid password reset code');
+    }
+
+    const result = await this.passwordResets.verify(identity.userId, code);
+
+    switch (result) {
+      case PASSWORD_RESET_RESULT.SUCCESS:
+        break;
+      case PASSWORD_RESET_RESULT.EXPIRED:
+        throw new BadRequestException('Password reset code has expired');
+      case PASSWORD_RESET_RESULT.LOCKED:
+        throw new BadRequestException('Too many attempts, request a new code');
+      default:
+        throw new BadRequestException('Invalid password reset code');
+    }
+
+    await this.identities.updatePassword(identity.id, await argon2.hash(newPassword));
+    await this.sessions.revokeByUserId(identity.userId);
   }
 }

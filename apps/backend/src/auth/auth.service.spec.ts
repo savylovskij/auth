@@ -9,6 +9,8 @@ import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
 import { IdentitiesService } from '../identities/identities.service';
 import { Identity } from '../identities/identity.entity';
 import { MailPort } from '../mail/mail.port';
+import { PasswordResetsService } from '../password-resets/password-resets.service';
+import { SessionsService } from '../sessions/sessions.service';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
@@ -23,6 +25,8 @@ describe('AuthService', () => {
   let users: jest.Mocked<Pick<UsersService, 'findByEmail' | 'create'>>;
   let identities: jest.Mocked<Pick<IdentitiesService, 'findByProvider' | 'create'>>;
   let emailVerifications: jest.Mocked<Pick<EmailVerificationsService, 'createCode'>>;
+  let passwordResets: jest.Mocked<Pick<PasswordResetsService, 'createCode' | 'verify'>>;
+  let sessions: jest.Mocked<Pick<SessionsService, 'revokeByUserId'>>;
   let mail: jest.Mocked<Pick<MailPort, 'send'>>;
   let dataSource: { transaction: jest.Mock };
 
@@ -31,6 +35,8 @@ describe('AuthService', () => {
     users = { findByEmail: jest.fn(), create: jest.fn() };
     identities = { findByProvider: jest.fn(), create: jest.fn() };
     emailVerifications = { createCode: jest.fn().mockResolvedValue('123456') };
+    passwordResets = { createCode: jest.fn(), verify: jest.fn() };
+    sessions = { revokeByUserId: jest.fn().mockResolvedValue(undefined) };
     mail = { send: jest.fn().mockResolvedValue(undefined) };
     dataSource = {
       transaction: jest.fn((cb: (manager: EntityManager) => Promise<unknown>) =>
@@ -44,6 +50,8 @@ describe('AuthService', () => {
         { provide: UsersService, useValue: users },
         { provide: IdentitiesService, useValue: identities },
         { provide: EmailVerificationsService, useValue: emailVerifications },
+        { provide: PasswordResetsService, useValue: passwordResets },
+        { provide: SessionsService, useValue: sessions },
         { provide: MailPort, useValue: mail },
         { provide: DataSource, useValue: dataSource },
       ],
