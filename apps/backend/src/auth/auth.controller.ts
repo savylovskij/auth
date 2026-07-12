@@ -24,8 +24,10 @@ import { AUTH_THROTTLE } from '../throttler/throttler.config';
 import { UserResponse } from '../users/dto/user-response.dto';
 import { User } from '../users/user.entity';
 import { AuthService } from './auth.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { clearSessionCookie, setSessionCookie } from './session-cookie';
 
@@ -65,6 +67,20 @@ export class AuthController {
     await this.startSession(user, request, response);
 
     return user;
+  }
+
+  @Throttle({ default: AUTH_THROTTLE })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto): Promise<void> {
+    return this.auth.forgotPassword(dto.email);
+  }
+
+  @Throttle({ default: AUTH_THROTTLE })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
+    return this.auth.resetPassword(dto.email, dto.code, dto.newPassword);
   }
 
   @Serialize(UserResponse)
