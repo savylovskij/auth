@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import * as argon2 from 'argon2';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 
 import { PasswordReset } from './password-reset.entity';
 import { PASSWORD_RESET_RESULT } from './password-reset-result.constant';
@@ -69,6 +69,12 @@ export class PasswordResetsService {
     await this.resets.remove(reset);
 
     return PASSWORD_RESET_RESULT.SUCCESS;
+  }
+
+  async deleteExpired(): Promise<number> {
+    const result = await this.resets.delete({ expiresAt: LessThan(new Date()) });
+
+    return result.affected ?? 0;
   }
 
   private generateCode(): string {

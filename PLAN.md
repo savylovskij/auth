@@ -177,7 +177,9 @@ Substeps:
       `store.resendVerification`; distinct messages for invalid/expired code (400) and
       throttling (429). No separate post-login redirect is needed — login/register go to
       `/profile` and the guard reroutes unverified users automatically.
-- [ ] (Optional) Reap expired verification tokens, reusing the expired-session cron.
+- [x] Reap expired verification tokens: `EmailVerificationsService.deleteExpired()` +
+      `ExpiredEmailVerificationsCleaner` (`@Cron` daily at midnight), mirroring
+      `ExpiredSessionsCleaner`. The password-reset table is reaped the same way (Step 7).
 
 ## Step 7. Password reset (done)
 
@@ -220,6 +222,9 @@ Substeps:
       → `store.resetPassword`, navigates to `/login`); both under `guestGuard`; a
       "Forgot your password?" link on the login screen. Distinct messages for invalid/expired
       code (400) and throttling (429).
+- [x] Reap expired reset tokens: `PasswordResetsService.deleteExpired()` +
+      `ExpiredPasswordResetsCleaner` (`@Cron` daily at midnight), mirroring
+      `ExpiredSessionsCleaner`.
 
 ## Open questions
 

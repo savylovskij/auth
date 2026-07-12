@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import * as argon2 from 'argon2';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 
 import { EmailVerification } from './email-verification.entity';
 import { EMAIL_VERIFICATION_RESULT } from './email-verification-result.constant';
@@ -69,6 +69,12 @@ export class EmailVerificationsService {
     await this.verifications.remove(verification);
 
     return EMAIL_VERIFICATION_RESULT.SUCCESS;
+  }
+
+  async deleteExpired(): Promise<number> {
+    const result = await this.verifications.delete({ expiresAt: LessThan(new Date()) });
+
+    return result.affected ?? 0;
   }
 
   private generateCode(): string {
