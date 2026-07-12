@@ -4,13 +4,12 @@ import { Observable } from 'rxjs';
 
 import { AuthRepository } from '../domain/auth.repository';
 import { Credentials } from '../domain/credentials';
-import { User } from '../domain/user';
 
 @Service()
 export class RegisterUseCase {
   private readonly repository = inject(AuthRepository);
 
-  execute(credentials: Credentials): Observable<User> {
+  execute(credentials: Credentials): Observable<void> {
     return this.repository.register(credentials);
   }
 }

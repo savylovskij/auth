@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 
 import { AuthRepository } from '../domain/auth.repository';
 import { Credentials } from '../domain/credentials';
+import { EmailVerification } from '../domain/email-verification';
 import { ResetPassword } from '../domain/reset-password';
 import { Session } from '../domain/session';
 import { User } from '../domain/user';
@@ -14,8 +15,8 @@ import { SKIP_AUTH_REDIRECT } from '../shared/auth-http.context';
 export class AuthHttpRepository implements AuthRepository {
   private readonly http = inject(HttpClient);
 
-  register(credentials: Credentials): Observable<User> {
-    return this.http.post<User>('/auth/register', credentials, { withCredentials: true });
+  register(credentials: Credentials): Observable<void> {
+    return this.http.post<void>('/auth/register', credentials, { withCredentials: true });
   }
 
   login(credentials: Credentials): Observable<User> {
@@ -29,12 +30,12 @@ export class AuthHttpRepository implements AuthRepository {
     });
   }
 
-  verifyEmail(code: string): Observable<User> {
-    return this.http.post<User>('/auth/verify-email', { code }, { withCredentials: true });
+  verifyEmail(verification: EmailVerification): Observable<User> {
+    return this.http.post<User>('/auth/verify-email', verification, { withCredentials: true });
   }
 
-  resendVerification(): Observable<void> {
-    return this.http.post<void>('/auth/verify-email/resend', null, { withCredentials: true });
+  resendVerification(email: string): Observable<void> {
+    return this.http.post<void>('/auth/verify-email/resend', { email }, { withCredentials: true });
   }
 
   forgotPassword(email: string): Observable<void> {

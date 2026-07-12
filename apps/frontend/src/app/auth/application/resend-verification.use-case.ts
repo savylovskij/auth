@@ -8,7 +8,7 @@ import { AuthRepository } from '../domain/auth.repository';
 export class ResendVerificationUseCase {
   private readonly repository = inject(AuthRepository);
 
-  execute(): Observable<void> {
-    return this.repository.resendVerification();
+  execute(email: string): Observable<void> {
+    return this.repository.resendVerification(email);
   }
 }

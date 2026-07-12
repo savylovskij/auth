@@ -43,7 +43,9 @@ export class Register {
     void submit(this.registerForm, async () => {
       try {
         await firstValueFrom(this.store.register(this.model()));
-        await this.router.navigate(['/profile']);
+        await this.router.navigate(['/verify-email'], {
+          queryParams: { email: this.model().email },
+        });
       } catch (error) {
         if (error instanceof HttpErrorResponse && error.status === HttpStatusCode.Conflict) {
           this.serverError.set('This email is already registered');

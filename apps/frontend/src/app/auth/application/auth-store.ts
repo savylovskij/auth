@@ -3,6 +3,7 @@ import { computed, inject, Service, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 
 import { Credentials } from '../domain/credentials';
+import { EmailVerification } from '../domain/email-verification';
 import { ResetPassword } from '../domain/reset-password';
 import { User } from '../domain/user';
 import { AuthState } from './auth-state';
@@ -45,10 +46,8 @@ export class AuthStore {
       .pipe(tap((user) => this.#state.set({ status: AUTH_STATUS.AUTHENTICATED, user })));
   }
 
-  register(credentials: Credentials): Observable<User> {
-    return this.registerUseCase
-      .execute(credentials)
-      .pipe(tap((user) => this.#state.set({ status: AUTH_STATUS.AUTHENTICATED, user })));
+  register(credentials: Credentials): Observable<void> {
+    return this.registerUseCase.execute(credentials);
   }
 
   loadMe(): Observable<User> {
@@ -57,14 +56,14 @@ export class AuthStore {
       .pipe(tap((user) => this.#state.set({ status: AUTH_STATUS.AUTHENTICATED, user })));
   }
 
-  verifyEmail(code: string): Observable<User> {
+  verifyEmail(verification: EmailVerification): Observable<User> {
     return this.verifyEmailUseCase
-      .execute(code)
+      .execute(verification)
       .pipe(tap((user) => this.#state.set({ status: AUTH_STATUS.AUTHENTICATED, user })));
   }
 
-  resendVerification(): Observable<void> {
-    return this.resendVerificationUseCase.execute();
+  resendVerification(email: string): Observable<void> {
+    return this.resendVerificationUseCase.execute(email);
   }
 
   forgotPassword(email: string): Observable<void> {

@@ -1,7 +1,7 @@
 import { HttpErrorResponse, HttpStatusCode } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
-import { form, FormField, pattern, required, submit } from '@angular/forms/signals';
-import { Router } from '@angular/router';
+import { email, form, FormField, pattern, required, submit } from '@angular/forms/signals';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { firstValueFrom } from 'rxjs';
 
@@ -16,12 +16,17 @@ import { AuthStore } from '../../application/auth-store';
 export class VerifyEmail {
   private readonly store = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
-  readonly model = signal({ code: '' });
+  private readonly email = this.route.snapshot.queryParamMap.get('email') ?? '';
+
+  readonly model = signal({ email: this.email, code: '' });
   readonly serverError = signal<string | null>(null);
   readonly info = signal<string | null>(null);
 
   readonly verifyForm = form(this.model, (path) => {
+    required(path.email, { message: 'Email is required' });
+    email(path.email, { message: 'Enter a valid email address' });
     required(path.code, { message: 'Code is required' });
     pattern(path.code, /^\d{6}$/, { message: 'Enter the 6-digit code' });
   });
@@ -33,7 +38,7 @@ export class VerifyEmail {
 
     void submit(this.verifyForm, async () => {
       try {
-        await firstValueFrom(this.store.verifyEmail(this.model().code));
+        await firstValueFrom(this.store.verifyEmail(this.model()));
         await this.router.navigate(['/profile']);
       } catch (error) {
         if (error instanceof HttpErrorResponse && error.status === HttpStatusCode.TooManyRequests) {
@@ -50,7 +55,7 @@ export class VerifyEmail {
     this.info.set(null);
 
     try {
-      await firstValueFrom(this.store.resendVerification());
+      await firstValueFrom(this.store.resendVerification(this.model().email));
       this.info.set('A new code has been sent to your email');
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status === HttpStatusCode.TooManyRequests) {
