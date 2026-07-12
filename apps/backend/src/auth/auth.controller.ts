@@ -27,6 +27,7 @@ import { AuthService } from './auth.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { clearSessionCookie, setSessionCookie } from './session-cookie';
@@ -42,8 +43,8 @@ export class AuthController {
   @Throttle({ default: AUTH_THROTTLE })
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('register')
-  register(@Body() dto: RegisterDto): Promise<void> {
-    return this.auth.register(dto);
+  register(@Body() credentials: RegisterDto): Promise<void> {
+    return this.auth.register(credentials);
   }
 
   @Throttle({ default: AUTH_THROTTLE })
@@ -51,11 +52,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(
-    @Body() dto: LoginDto,
+    @Body() credentials: LoginDto,
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<User> {
-    const user = await this.auth.login(dto);
+    const user = await this.auth.login(credentials);
     await this.sessions.deleteExpired();
     await this.startSession(user, request, response);
 
@@ -65,15 +66,19 @@ export class AuthController {
   @Throttle({ default: AUTH_THROTTLE })
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('forgot-password')
-  forgotPassword(@Body() dto: ForgotPasswordDto): Promise<void> {
-    return this.auth.forgotPassword(dto.email);
+  forgotPassword(@Body() resetRequest: ForgotPasswordDto): Promise<void> {
+    return this.auth.forgotPassword(resetRequest.email);
   }
 
   @Throttle({ default: AUTH_THROTTLE })
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('reset-password')
-  resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
-    return this.auth.resetPassword(dto.email, dto.code, dto.newPassword);
+  resetPassword(@Body() passwordReset: ResetPasswordDto): Promise<void> {
+    return this.auth.resetPassword(
+      passwordReset.email,
+      passwordReset.code,
+      passwordReset.newPassword,
+    );
   }
 
   @Serialize(UserResponse)
@@ -86,18 +91,23 @@ export class AuthController {
   @Throttle({ default: AUTH_THROTTLE })
   @Serialize(UserResponse)
   @HttpCode(HttpStatus.OK)
-  @UseGuards(SessionGuard)
   @Post('verify-email')
-  verifyEmail(@CurrentUser() user: User, @Body() dto: VerifyEmailDto): Promise<User> {
-    return this.auth.verifyEmail(user, dto.code);
+  async verifyEmail(
+    @Body() verification: VerifyEmailDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<User> {
+    const user = await this.auth.verifyEmail(verification.email, verification.code);
+    await this.startSession(user, request, response);
+
+    return user;
   }
 
   @Throttle({ default: AUTH_THROTTLE })
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(SessionGuard)
   @Post('verify-email/resend')
-  resendVerification(@CurrentUser() user: User): Promise<void> {
-    return this.auth.resendVerification(user);
+  resendVerification(@Body() resendRequest: ResendVerificationDto): Promise<void> {
+    return this.auth.resendVerification(resendRequest.email);
   }
 
   @HttpCode(HttpStatus.NO_CONTENT)

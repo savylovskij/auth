@@ -8,13 +8,13 @@ import {
 import * as argon2 from 'argon2';
 import { DataSource } from 'typeorm';
 
-import { EMAIL_VERIFICATION_RESULT } from '../email-verifications/email-verification-result.constant';
-import { EmailVerificationsService } from '../email-verifications/email-verifications.service';
+import { isUniqueViolation } from '../common/is-unique-violation';
 import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
 import { IdentitiesService } from '../identities/identities.service';
 import { MailPort } from '../mail/mail.port';
 import { PASSWORD_RESET_RESULT } from '../password-resets/password-reset-result.constant';
 import { PasswordResetsService } from '../password-resets/password-resets.service';
+import { PENDING_REGISTRATION_RESULT } from '../pending-registrations/pending-registration-result.constant';
 import { PendingRegistrationsService } from '../pending-registrations/pending-registrations.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { User } from '../users/user.entity';
@@ -28,7 +28,6 @@ export class AuthService {
   constructor(
     private readonly users: UsersService,
     private readonly identities: IdentitiesService,
-    private readonly emailVerifications: EmailVerificationsService,
     private readonly pendingRegistrations: PendingRegistrationsService,
     private readonly passwordResets: PasswordResetsService,
     private readonly sessions: SessionsService,
@@ -36,8 +35,8 @@ export class AuthService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async register(dto: RegisterDto): Promise<void> {
-    const email = normalizeEmail(dto.email);
+  async register(credentials: RegisterDto): Promise<void> {
+    const email = normalizeEmail(credentials.email);
 
     const existing = await this.users.findByEmail(email);
 
@@ -45,7 +44,7 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
-    const code = await this.pendingRegistrations.createPending(email, dto.password);
+    const code = await this.pendingRegistrations.createPending(email, credentials.password);
 
     await this.mail.send({
       to: email,
@@ -54,45 +53,73 @@ export class AuthService {
     });
   }
 
-  async verifyEmail(user: User, code: string): Promise<User> {
-    if (user.emailVerifiedAt) {
-      throw new ConflictException('Email already verified');
-    }
+  async verifyEmail(email: string, code: string): Promise<User> {
+    const normalized = normalizeEmail(email);
 
-    const result = await this.emailVerifications.verify(user.id, code);
+    const result = await this.pendingRegistrations.verify(normalized, code);
 
     switch (result) {
-      case EMAIL_VERIFICATION_RESULT.SUCCESS:
-        return this.users.markEmailVerified(user);
-      case EMAIL_VERIFICATION_RESULT.EXPIRED:
+      case PENDING_REGISTRATION_RESULT.SUCCESS:
+        break;
+      case PENDING_REGISTRATION_RESULT.EXPIRED:
         throw new BadRequestException('Verification code has expired');
-      case EMAIL_VERIFICATION_RESULT.LOCKED:
+      case PENDING_REGISTRATION_RESULT.LOCKED:
         throw new BadRequestException('Too many attempts, request a new code');
       default:
         throw new BadRequestException('Invalid verification code');
     }
+
+    try {
+      return await this.dataSource.transaction(async (manager) => {
+        const pending = await this.pendingRegistrations.findByEmail(normalized, manager);
+
+        if (!pending) {
+          throw new BadRequestException('Invalid verification code');
+        }
+
+        const user = await this.users.create(normalized, manager);
+
+        await this.identities.create(
+          {
+            userId: user.id,
+            provider: AUTH_PROVIDER_LIST.EMAIL,
+            providerId: normalized,
+            passwordHash: pending.passwordHash,
+          },
+          manager,
+        );
+
+        await this.pendingRegistrations.deleteByEmail(normalized, manager);
+
+        return this.users.markEmailVerified(user, manager);
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException('Email already registered');
+      }
+
+      throw error;
+    }
   }
 
-  async resendVerification(user: User): Promise<void> {
-    if (user.emailVerifiedAt) {
-      throw new ConflictException('Email already verified');
+  async resendVerification(email: string): Promise<void> {
+    const normalized = normalizeEmail(email);
+
+    const code = await this.pendingRegistrations.refreshCode(normalized);
+
+    if (!code) {
+      return;
     }
 
-    await this.sendVerificationCode(user.id, user.email);
-  }
-
-  private async sendVerificationCode(userId: string, email: string): Promise<void> {
-    const code = await this.emailVerifications.createCode(userId);
-
     await this.mail.send({
-      to: email,
+      to: normalized,
       subject: 'Verify your email',
       text: `Your verification code is ${code}. It expires in 10 minutes.`,
     });
   }
 
-  async login(dto: LoginDto): Promise<User> {
-    const email = normalizeEmail(dto.email);
+  async login(credentials: LoginDto): Promise<User> {
+    const email = normalizeEmail(credentials.email);
 
     const identity = await this.identities.findByProvider(AUTH_PROVIDER_LIST.EMAIL, email);
 
@@ -100,7 +127,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const valid = await argon2.verify(identity.passwordHash, dto.password);
+    const valid = await argon2.verify(identity.passwordHash, credentials.password);
 
     if (!valid) {
       throw new UnauthorizedException('Invalid credentials');

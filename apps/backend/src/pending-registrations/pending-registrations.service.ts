@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import * as argon2 from 'argon2';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 
 import { PendingRegistration } from './pending-registration.entity';
 import { PENDING_REGISTRATION_RESULT } from './pending-registration-result.constant';
@@ -68,6 +68,40 @@ export class PendingRegistrationsService {
     }
 
     return PENDING_REGISTRATION_RESULT.SUCCESS;
+  }
+
+  async refreshCode(email: string): Promise<string | null> {
+    const pending = await this.pendingRegistrations.findOne({ where: { email } });
+
+    if (!pending) {
+      return null;
+    }
+
+    const code = this.generateCode();
+
+    pending.codeHash = await argon2.hash(code);
+    pending.expiresAt = new Date(Date.now() + TTL_MS);
+    pending.attempts = 0;
+
+    await this.pendingRegistrations.save(pending);
+
+    return code;
+  }
+
+  findByEmail(email: string, manager?: EntityManager): Promise<PendingRegistration | null> {
+    const repository = manager
+      ? manager.getRepository(PendingRegistration)
+      : this.pendingRegistrations;
+
+    return repository.findOne({ where: { email } });
+  }
+
+  async deleteByEmail(email: string, manager?: EntityManager): Promise<void> {
+    const repository = manager
+      ? manager.getRepository(PendingRegistration)
+      : this.pendingRegistrations;
+
+    await repository.delete({ email });
   }
 
   private generateCode(): string {
