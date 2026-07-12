@@ -94,7 +94,7 @@ Substeps:
       POST/DELETE (no state-changing GETs) close the vector; cookie is `httpOnly` + `Secure`/`__Host-` in prod; Google OAuth has its own `state`. No
       `sameSite=none` need, so a synchronizer/double-submit token is redundant
       for this scope.
-- [ ] Email verification — see Step 6. Password reset — not started.
+- [x] Email verification — see Step 6. Password reset — see Step 7.
 
 ## Step 6. Email verification (planned)
 
@@ -179,9 +179,52 @@ Substeps:
       `/profile` and the guard reroutes unverified users automatically.
 - [ ] (Optional) Reap expired verification tokens, reusing the expired-session cron.
 
+## Step 7. Password reset (done)
+
+Goal: let a user who forgot their password prove mailbox ownership and set a new one.
+Decision: **6-digit OTP** (not a magic link), mirroring email verification — same OTP
+machinery, TTL, and attempt-capping, so the two flows stay symmetric.
+
+Notes:
+
+- The reset table stores only the **OTP** (its hash), not passwords. The password itself
+  stays in `identities.passwordHash`; on success we overwrite it there. Only email
+  identities have a password, so Google-only accounts have nothing to reset.
+- Anti-enumeration: `forgot-password` always returns 204 regardless of whether the email
+  exists; `reset-password` maps a missing identity to the same generic invalid-code 400.
+
+Substeps:
+
+- [x] Data model: `password_resets` table (`id`, `userId` FK, `codeHash`, `expiresAt`,
+      `attempts`, `createdAt`) — mirror of `email_verifications`. Entity + migration
+      (`AddPasswordResets`).
+- [x] Token service (`PasswordResetsService`): `createCode(userId)` → 6-digit OTP,
+      argon2-hashed, 10-min TTL, one active per user (deletes prior);
+      `verify(userId, code)` → `success | invalid | expired | locked`, single-use,
+      caps `attempts` at 5.
+- [x] `AuthService.forgotPassword(email)`: looks up the email identity; silently returns
+      if none (Google-only / unknown email); else `createCode` + sends the OTP via
+      `MailPort`. `AuthService.resetPassword(email, code, newPassword)`: verifies the OTP
+      (distinct 400 messages for invalid/expired/locked), then updates
+      `identities.passwordHash` **and revokes all of the user's sessions**
+      (`SessionsService.revokeByUserId`) — a password change must invalidate every session.
+- [x] Endpoints: throttled `POST /auth/forgot-password` and `POST /auth/reset-password`
+      (both public, both 204). DTOs: `ForgotPasswordDto` (email), `ResetPasswordDto`
+      (email, `code` `/^\d{6}$/`, `newPassword` 8–64). Verified e2e against Mailpit:
+      register→forgot (email with code)→reset→old password 401, new password 200, reused
+      code 400, forgot for unknown email 204, wrong code 400.
+- [x] Frontend: `AuthRepository.forgotPassword`/`resetPassword` → `AuthHttpRepository` →
+      use-cases → `AuthStore` (no auth-state change — the user is logged out).
+      `/forgot-password` screen (email → sends code, navigates to `/reset-password?email=…`);
+      `/reset-password` screen (email prefilled from the query param, `code`, `newPassword`
+      → `store.resetPassword`, navigates to `/login`); both under `guestGuard`; a
+      "Forgot your password?" link on the login screen. Distinct messages for invalid/expired
+      code (400) and throttling (429).
+
 ## Open questions
 
 - argon2 vs bcrypt.
 - ~~Behavior on email collision~~ — decided: link the Google identity to the
   existing user by email (see Step 3).
-- Whether email verification and password reset are in scope for this project.
+- ~~Whether email verification and password reset are in scope for this project.~~ —
+  decided: both in scope and implemented (see Steps 6 and 7).
