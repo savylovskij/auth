@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 
 import { AuthRepository } from '../domain/auth.repository';
 import { Credentials } from '../domain/credentials';
+import { ResetPassword } from '../domain/reset-password';
 import { Session } from '../domain/session';
 import { User } from '../domain/user';
 import { SKIP_AUTH_REDIRECT } from '../shared/auth-http.context';
@@ -34,6 +35,14 @@ export class AuthHttpRepository implements AuthRepository {
 
   resendVerification(): Observable<void> {
     return this.http.post<void>('/auth/verify-email/resend', null, { withCredentials: true });
+  }
+
+  forgotPassword(email: string): Observable<void> {
+    return this.http.post<void>('/auth/forgot-password', { email }, { withCredentials: true });
+  }
+
+  resetPassword(payload: ResetPassword): Observable<void> {
+    return this.http.post<void>('/auth/reset-password', payload, { withCredentials: true });
   }
 
   logout(): Observable<void> {

@@ -3,15 +3,18 @@ import { computed, inject, Service, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 
 import { Credentials } from '../domain/credentials';
+import { ResetPassword } from '../domain/reset-password';
 import { User } from '../domain/user';
 import { AuthState } from './auth-state';
 import { AUTH_STATUS } from './auth-status';
+import { ForgotPasswordUseCase } from './forgot-password.use-case';
 import { LoadMeUseCase } from './load-me.use-case';
 import { LoginUseCase } from './login.use-case';
 import { LogoutUseCase } from './logout.use-case';
 import { LogoutAllUseCase } from './logout-all.use-case';
 import { RegisterUseCase } from './register.use-case';
 import { ResendVerificationUseCase } from './resend-verification.use-case';
+import { ResetPasswordUseCase } from './reset-password.use-case';
 import { VerifyEmailUseCase } from './verify-email.use-case';
 
 @Service()
@@ -23,6 +26,8 @@ export class AuthStore {
   private readonly logoutAllUseCase = inject(LogoutAllUseCase);
   private readonly verifyEmailUseCase = inject(VerifyEmailUseCase);
   private readonly resendVerificationUseCase = inject(ResendVerificationUseCase);
+  private readonly forgotPasswordUseCase = inject(ForgotPasswordUseCase);
+  private readonly resetPasswordUseCase = inject(ResetPasswordUseCase);
 
   readonly #state = signal<AuthState>({ status: AUTH_STATUS.UNKNOWN });
 
@@ -60,6 +65,14 @@ export class AuthStore {
 
   resendVerification(): Observable<void> {
     return this.resendVerificationUseCase.execute();
+  }
+
+  forgotPassword(email: string): Observable<void> {
+    return this.forgotPasswordUseCase.execute(email);
+  }
+
+  resetPassword(payload: ResetPassword): Observable<void> {
+    return this.resetPasswordUseCase.execute(payload);
   }
 
   logout(): Observable<void> {

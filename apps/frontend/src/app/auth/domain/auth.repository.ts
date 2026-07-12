@@ -1,6 +1,7 @@
 import { Observable } from 'rxjs';
 
 import { Credentials } from './credentials';
+import { ResetPassword } from './reset-password';
 import { Session } from './session';
 import { User } from './user';
 
@@ -10,6 +11,8 @@ export abstract class AuthRepository {
   abstract me(): Observable<User>;
   abstract verifyEmail(code: string): Observable<User>;
   abstract resendVerification(): Observable<void>;
+  abstract forgotPassword(email: string): Observable<void>;
+  abstract resetPassword(payload: ResetPassword): Observable<void>;
   abstract logout(): Observable<void>;
   abstract logoutAll(): Observable<void>;
   abstract sessions(): Observable<Session[]>;
