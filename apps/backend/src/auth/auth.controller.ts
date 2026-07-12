@@ -40,17 +40,10 @@ export class AuthController {
   ) {}
 
   @Throttle({ default: AUTH_THROTTLE })
-  @Serialize(UserResponse)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Post('register')
-  async register(
-    @Body() dto: RegisterDto,
-    @Req() request: Request,
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<User> {
-    const user = await this.auth.register(dto);
-    await this.startSession(user, request, response);
-
-    return user;
+  register(@Body() dto: RegisterDto): Promise<void> {
+    return this.auth.register(dto);
   }
 
   @Throttle({ default: AUTH_THROTTLE })

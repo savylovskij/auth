@@ -8,7 +8,6 @@ import {
 import * as argon2 from 'argon2';
 import { DataSource } from 'typeorm';
 
-import { isUniqueViolation } from '../common/is-unique-violation';
 import { EMAIL_VERIFICATION_RESULT } from '../email-verifications/email-verification-result.constant';
 import { EmailVerificationsService } from '../email-verifications/email-verifications.service';
 import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
@@ -16,6 +15,7 @@ import { IdentitiesService } from '../identities/identities.service';
 import { MailPort } from '../mail/mail.port';
 import { PASSWORD_RESET_RESULT } from '../password-resets/password-reset-result.constant';
 import { PasswordResetsService } from '../password-resets/password-resets.service';
+import { PendingRegistrationsService } from '../pending-registrations/pending-registrations.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
@@ -29,52 +29,29 @@ export class AuthService {
     private readonly users: UsersService,
     private readonly identities: IdentitiesService,
     private readonly emailVerifications: EmailVerificationsService,
+    private readonly pendingRegistrations: PendingRegistrationsService,
     private readonly passwordResets: PasswordResetsService,
     private readonly sessions: SessionsService,
     private readonly mail: MailPort,
     private readonly dataSource: DataSource,
   ) {}
 
-  async register(dto: RegisterDto): Promise<User> {
+  async register(dto: RegisterDto): Promise<void> {
     const email = normalizeEmail(dto.email);
 
-    const existing = await this.identities.findByProvider(AUTH_PROVIDER_LIST.EMAIL, email);
+    const existing = await this.users.findByEmail(email);
 
     if (existing) {
       throw new ConflictException('Email already registered');
     }
 
-    const passwordHash = await argon2.hash(dto.password);
+    const code = await this.pendingRegistrations.createPending(email, dto.password);
 
-    let user: User;
-
-    try {
-      user = await this.dataSource.transaction(async (manager) => {
-        const created = await this.users.create(email, manager);
-
-        await this.identities.create(
-          {
-            userId: created.id,
-            provider: AUTH_PROVIDER_LIST.EMAIL,
-            providerId: email,
-            passwordHash,
-          },
-          manager,
-        );
-
-        return created;
-      });
-    } catch (error) {
-      if (isUniqueViolation(error)) {
-        throw new ConflictException('Email already registered');
-      }
-
-      throw error;
-    }
-
-    await this.sendVerificationCode(user.id, email);
-
-    return user;
+    await this.mail.send({
+      to: email,
+      subject: 'Verify your email',
+      text: `Your verification code is ${code}. It expires in 10 minutes.`,
+    });
   }
 
   async verifyEmail(user: User, code: string): Promise<User> {

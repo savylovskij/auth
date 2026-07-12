@@ -2,7 +2,7 @@ import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import * as argon2 from 'argon2';
-import { DataSource, EntityManager, QueryFailedError } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 
 import { EmailVerificationsService } from '../email-verifications/email-verifications.service';
 import { AUTH_PROVIDER_LIST } from '../identities/auth-provider.constant';
@@ -10,6 +10,7 @@ import { IdentitiesService } from '../identities/identities.service';
 import { Identity } from '../identities/identity.entity';
 import { MailPort } from '../mail/mail.port';
 import { PasswordResetsService } from '../password-resets/password-resets.service';
+import { PendingRegistrationsService } from '../pending-registrations/pending-registrations.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
@@ -17,7 +18,6 @@ import { AuthService } from './auth.service';
 
 jest.mock('argon2');
 
-const hash = argon2.hash as jest.Mock;
 const verify = argon2.verify as jest.Mock;
 
 describe('AuthService', () => {
@@ -25,6 +25,9 @@ describe('AuthService', () => {
   let users: jest.Mocked<Pick<UsersService, 'findByEmail' | 'create'>>;
   let identities: jest.Mocked<Pick<IdentitiesService, 'findByProvider' | 'create'>>;
   let emailVerifications: jest.Mocked<Pick<EmailVerificationsService, 'createCode'>>;
+  let pendingRegistrations: jest.Mocked<
+    Pick<PendingRegistrationsService, 'createPending' | 'verify'>
+  >;
   let passwordResets: jest.Mocked<Pick<PasswordResetsService, 'createCode' | 'verify'>>;
   let sessions: jest.Mocked<Pick<SessionsService, 'revokeByUserId'>>;
   let mail: jest.Mocked<Pick<MailPort, 'send'>>;
@@ -35,6 +38,7 @@ describe('AuthService', () => {
     users = { findByEmail: jest.fn(), create: jest.fn() };
     identities = { findByProvider: jest.fn(), create: jest.fn() };
     emailVerifications = { createCode: jest.fn().mockResolvedValue('123456') };
+    pendingRegistrations = { createPending: jest.fn(), verify: jest.fn() };
     passwordResets = { createCode: jest.fn(), verify: jest.fn() };
     sessions = { revokeByUserId: jest.fn().mockResolvedValue(undefined) };
     mail = { send: jest.fn().mockResolvedValue(undefined) };
@@ -50,6 +54,7 @@ describe('AuthService', () => {
         { provide: UsersService, useValue: users },
         { provide: IdentitiesService, useValue: identities },
         { provide: EmailVerificationsService, useValue: emailVerifications },
+        { provide: PendingRegistrationsService, useValue: pendingRegistrations },
         { provide: PasswordResetsService, useValue: passwordResets },
         { provide: SessionsService, useValue: sessions },
         { provide: MailPort, useValue: mail },
@@ -61,57 +66,29 @@ describe('AuthService', () => {
   });
 
   describe('register', () => {
-    it('creates a user and an email identity with a hashed password', async () => {
-      const user = { id: 'u1', email: 'user@example.com' } as User;
+    it('stages a pending registration and emails the verification code', async () => {
+      users.findByEmail.mockResolvedValue(null);
+      pendingRegistrations.createPending.mockResolvedValue('123456');
 
-      identities.findByProvider.mockResolvedValue(null);
-      users.create.mockResolvedValue(user);
-      hash.mockResolvedValue('hashed');
-      identities.create.mockResolvedValue({} as Identity);
+      await service.register({ email: '  User@Example.COM ', password: 'secret' });
 
-      const result = await service.register({ email: '  User@Example.COM ', password: 'secret' });
-
-      expect(result).toBe(user);
-      expect(identities.findByProvider).toHaveBeenCalledWith(
-        AUTH_PROVIDER_LIST.EMAIL,
-        'user@example.com',
-      );
-      expect(users.create).toHaveBeenCalledWith('user@example.com', expect.anything());
-      expect(hash).toHaveBeenCalledWith('secret');
-      expect(identities.create).toHaveBeenCalledWith(
-        {
-          userId: 'u1',
-          provider: AUTH_PROVIDER_LIST.EMAIL,
-          providerId: 'user@example.com',
-          passwordHash: 'hashed',
-        },
-        expect.anything(),
-      );
+      expect(users.findByEmail).toHaveBeenCalledWith('user@example.com');
+      expect(pendingRegistrations.createPending).toHaveBeenCalledWith('user@example.com', 'secret');
+      expect(mail.send).toHaveBeenCalledWith({
+        to: 'user@example.com',
+        subject: 'Verify your email',
+        text: 'Your verification code is 123456. It expires in 10 minutes.',
+      });
     });
 
-    it('rejects a duplicate email without creating anything', async () => {
-      identities.findByProvider.mockResolvedValue({ id: 'i1' } as Identity);
+    it('rejects a duplicate email without staging anything', async () => {
+      users.findByEmail.mockResolvedValue({ id: 'u1' } as User);
 
       await expect(
         service.register({ email: 'user@example.com', password: 'secret' }),
       ).rejects.toThrow(ConflictException);
-      expect(users.create).not.toHaveBeenCalled();
-      expect(identities.create).not.toHaveBeenCalled();
-    });
-
-    it('maps a unique violation during the transaction to ConflictException', async () => {
-      const user = { id: 'u1', email: 'user@example.com' } as User;
-
-      identities.findByProvider.mockResolvedValue(null);
-      users.create.mockResolvedValue(user);
-      hash.mockResolvedValue('hashed');
-      identities.create.mockRejectedValue(
-        new QueryFailedError('insert', [], { code: '23505' } as unknown as Error),
-      );
-
-      await expect(
-        service.register({ email: 'user@example.com', password: 'secret' }),
-      ).rejects.toThrow(ConflictException);
+      expect(pendingRegistrations.createPending).not.toHaveBeenCalled();
+      expect(mail.send).not.toHaveBeenCalled();
     });
   });
 
