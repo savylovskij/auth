@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import * as argon2 from 'argon2';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, LessThan, Repository } from 'typeorm';
 
 import { PendingRegistration } from './pending-registration.entity';
 import { PENDING_REGISTRATION_RESULT } from './pending-registration-result.constant';
@@ -102,6 +102,12 @@ export class PendingRegistrationsService {
       : this.pendingRegistrations;
 
     await repository.delete({ email });
+  }
+
+  async deleteExpired(): Promise<number> {
+    const result = await this.pendingRegistrations.delete({ expiresAt: LessThan(new Date()) });
+
+    return result.affected ?? 0;
   }
 
   private generateCode(): string {
