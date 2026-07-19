@@ -17,6 +17,7 @@
     "backend:prod": "pnpm --filter backend start:prod",
     "frontend:dev": "pnpm --filter frontend start",
     "frontend:build": "pnpm --filter frontend build",
+    "e2e": "pnpm --filter e2e test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "pnpm -r lint",
