@@ -5,9 +5,13 @@ export class PendingRegistration {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Index({ unique: true })
+  @Index()
   @Column()
   email!: string;
+
+  @Index({ unique: true })
+  @Column()
+  tokenHash!: string;
 
   @Column()
   passwordHash!: string;

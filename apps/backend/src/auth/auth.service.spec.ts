@@ -28,7 +28,7 @@ describe('AuthService', () => {
   let pendingRegistrations: jest.Mocked<
     Pick<
       PendingRegistrationsService,
-      'createPending' | 'verify' | 'refreshCode' | 'findByEmail' | 'deleteByEmail'
+      'createPending' | 'verify' | 'refreshCode' | 'findByToken' | 'deleteByEmail'
     >
   >;
   let passwordResets: jest.Mocked<Pick<PasswordResetsService, 'createCode' | 'verify'>>;
@@ -44,7 +44,7 @@ describe('AuthService', () => {
       createPending: jest.fn(),
       verify: jest.fn(),
       refreshCode: jest.fn(),
-      findByEmail: jest.fn(),
+      findByToken: jest.fn(),
       deleteByEmail: jest.fn().mockResolvedValue(undefined),
     };
     passwordResets = { createCode: jest.fn(), verify: jest.fn() };
@@ -75,10 +75,11 @@ describe('AuthService', () => {
   describe('register', () => {
     it('stages a pending registration and emails the verification code', async () => {
       users.findByEmail.mockResolvedValue(null);
-      pendingRegistrations.createPending.mockResolvedValue('123456');
+      pendingRegistrations.createPending.mockResolvedValue({ token: 'tok', code: '123456' });
 
-      await service.register({ email: '  User@Example.COM ', password: 'secret' });
+      const token = await service.register({ email: '  User@Example.COM ', password: 'secret' });
 
+      expect(token).toBe('tok');
       expect(users.findByEmail).toHaveBeenCalledWith('user@example.com');
       expect(pendingRegistrations.createPending).toHaveBeenCalledWith('user@example.com', 'secret');
       expect(mail.send).toHaveBeenCalledWith({
@@ -105,17 +106,18 @@ describe('AuthService', () => {
       const verified = { ...user, emailVerifiedAt: new Date() } as User;
 
       pendingRegistrations.verify.mockResolvedValue(PENDING_REGISTRATION_RESULT.SUCCESS);
-      pendingRegistrations.findByEmail.mockResolvedValue({
+      pendingRegistrations.findByToken.mockResolvedValue({
+        email: 'user@example.com',
         passwordHash: 'hashed',
       } as PendingRegistration);
       users.create.mockResolvedValue(user);
       identities.create.mockResolvedValue({} as Identity);
       users.markEmailVerified.mockResolvedValue(verified);
 
-      const result = await service.verifyEmail(' User@Example.com ', '123456');
+      const result = await service.verifyEmail('tok', ' User@Example.com ', '123456');
 
       expect(result).toBe(verified);
-      expect(pendingRegistrations.verify).toHaveBeenCalledWith('user@example.com', '123456');
+      expect(pendingRegistrations.verify).toHaveBeenCalledWith('tok', 'user@example.com', '123456');
       expect(users.create).toHaveBeenCalledWith('user@example.com', expect.anything());
       expect(identities.create).toHaveBeenCalledWith(
         {
@@ -135,15 +137,24 @@ describe('AuthService', () => {
     it('rejects an invalid code without provisioning', async () => {
       pendingRegistrations.verify.mockResolvedValue(PENDING_REGISTRATION_RESULT.INVALID);
 
-      await expect(service.verifyEmail('user@example.com', '000000')).rejects.toThrow(
+      await expect(service.verifyEmail('tok', 'user@example.com', '000000')).rejects.toThrow(
         BadRequestException,
       );
       expect(users.create).not.toHaveBeenCalled();
     });
 
+    it('rejects a request without a pending registration cookie', async () => {
+      await expect(service.verifyEmail(null, 'user@example.com', '123456')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(pendingRegistrations.verify).not.toHaveBeenCalled();
+      expect(users.create).not.toHaveBeenCalled();
+    });
+
     it('maps a unique violation during provisioning to ConflictException', async () => {
       pendingRegistrations.verify.mockResolvedValue(PENDING_REGISTRATION_RESULT.SUCCESS);
-      pendingRegistrations.findByEmail.mockResolvedValue({
+      pendingRegistrations.findByToken.mockResolvedValue({
+        email: 'user@example.com',
         passwordHash: 'hashed',
       } as PendingRegistration);
       users.create.mockResolvedValue({ id: 'u1' } as User);
@@ -151,7 +162,7 @@ describe('AuthService', () => {
         new QueryFailedError('insert', [], { code: '23505' } as unknown as Error),
       );
 
-      await expect(service.verifyEmail('user@example.com', '123456')).rejects.toThrow(
+      await expect(service.verifyEmail('tok', 'user@example.com', '123456')).rejects.toThrow(
         ConflictException,
       );
     });
@@ -161,9 +172,9 @@ describe('AuthService', () => {
     it('refreshes the code and emails it', async () => {
       pendingRegistrations.refreshCode.mockResolvedValue('654321');
 
-      await service.resendVerification(' User@Example.com ');
+      await service.resendVerification('tok', ' User@Example.com ');
 
-      expect(pendingRegistrations.refreshCode).toHaveBeenCalledWith('user@example.com');
+      expect(pendingRegistrations.refreshCode).toHaveBeenCalledWith('tok', 'user@example.com');
       expect(mail.send).toHaveBeenCalledWith({
         to: 'user@example.com',
         subject: 'Verify your email',
@@ -174,8 +185,15 @@ describe('AuthService', () => {
     it('stays silent when there is no pending registration', async () => {
       pendingRegistrations.refreshCode.mockResolvedValue(null);
 
-      await service.resendVerification('user@example.com');
+      await service.resendVerification('tok', 'user@example.com');
 
+      expect(mail.send).not.toHaveBeenCalled();
+    });
+
+    it('stays silent without a pending registration cookie', async () => {
+      await service.resendVerification(null, 'user@example.com');
+
+      expect(pendingRegistrations.refreshCode).not.toHaveBeenCalled();
       expect(mail.send).not.toHaveBeenCalled();
     });
   });

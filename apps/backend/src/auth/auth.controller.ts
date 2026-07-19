@@ -14,6 +14,7 @@ import { Throttle } from '@nestjs/throttler';
 
 import type { Request, Response } from 'express';
 
+import { Cookie } from '../common/cookie.decorator';
 import { CurrentSession } from '../common/current-session.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Serialize } from '../common/serialize.interceptor';
@@ -30,6 +31,11 @@ import { RegisterDto } from './dto/register.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import {
+  clearPendingRegistrationCookie,
+  PENDING_REGISTRATION_COOKIE,
+  setPendingRegistrationCookie,
+} from './pending-registration-cookie';
 import { clearSessionCookie, setSessionCookie } from './session-cookie';
 
 @Controller('auth')
@@ -43,8 +49,13 @@ export class AuthController {
   @Throttle({ default: AUTH_THROTTLE })
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('register')
-  register(@Body() credentials: RegisterDto): Promise<void> {
-    return this.auth.register(credentials);
+  async register(
+    @Body() credentials: RegisterDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    const token = await this.auth.register(credentials);
+
+    setPendingRegistrationCookie({ response, token, isProduction: this.isProduction });
   }
 
   @Throttle({ default: AUTH_THROTTLE })
@@ -94,10 +105,13 @@ export class AuthController {
   @Post('verify-email')
   async verifyEmail(
     @Body() verification: VerifyEmailDto,
+    @Cookie(PENDING_REGISTRATION_COOKIE) pendingToken: string | null,
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<User> {
-    const user = await this.auth.verifyEmail(verification.email, verification.code);
+    const user = await this.auth.verifyEmail(pendingToken, verification.email, verification.code);
+
+    clearPendingRegistrationCookie(response, this.isProduction);
     await this.startSession(user, request, response);
 
     return user;
@@ -106,8 +120,11 @@ export class AuthController {
   @Throttle({ default: AUTH_THROTTLE })
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('verify-email/resend')
-  resendVerification(@Body() resendRequest: ResendVerificationDto): Promise<void> {
-    return this.auth.resendVerification(resendRequest.email);
+  resendVerification(
+    @Body() resendRequest: ResendVerificationDto,
+    @Cookie(PENDING_REGISTRATION_COOKIE) pendingToken: string | null,
+  ): Promise<void> {
+    return this.auth.resendVerification(pendingToken, resendRequest.email);
   }
 
   @HttpCode(HttpStatus.NO_CONTENT)

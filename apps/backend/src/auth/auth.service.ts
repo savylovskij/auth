@@ -40,7 +40,7 @@ export class AuthService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async register(credentials: RegisterDto): Promise<void> {
+  async register(credentials: RegisterDto): Promise<string> {
     const email = normalizeEmail(credentials.email);
 
     const existing = await this.users.findByEmail(email);
@@ -49,19 +49,28 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
-    const code = await this.pendingRegistrations.createPending(email, credentials.password);
+    const { token, code } = await this.pendingRegistrations.createPending(
+      email,
+      credentials.password,
+    );
 
     await this.mail.send({
       to: email,
       subject: 'Verify your email',
       text: `Your verification code is ${code}. It expires in 10 minutes.`,
     });
+
+    return token;
   }
 
-  async verifyEmail(email: string, code: string): Promise<User> {
+  async verifyEmail(token: string | null, email: string, code: string): Promise<User> {
     const normalized = normalizeEmail(email);
 
-    const result = await this.pendingRegistrations.verify(normalized, code);
+    if (!token) {
+      throw new BadRequestException('Invalid verification code');
+    }
+
+    const result = await this.pendingRegistrations.verify(token, normalized, code);
 
     switch (result) {
       case PENDING_REGISTRATION_RESULT.SUCCESS:
@@ -76,25 +85,25 @@ export class AuthService {
 
     try {
       return await this.dataSource.transaction(async (manager) => {
-        const pending = await this.pendingRegistrations.findByEmail(normalized, manager);
+        const pending = await this.pendingRegistrations.findByToken(token, manager);
 
         if (!pending) {
           throw new BadRequestException('Invalid verification code');
         }
 
-        const user = await this.users.create(normalized, manager);
+        const user = await this.users.create(pending.email, manager);
 
         await this.identities.create(
           {
             userId: user.id,
             provider: AUTH_PROVIDER_LIST.EMAIL,
-            providerId: normalized,
+            providerId: pending.email,
             passwordHash: pending.passwordHash,
           },
           manager,
         );
 
-        await this.pendingRegistrations.deleteByEmail(normalized, manager);
+        await this.pendingRegistrations.deleteByEmail(pending.email, manager);
 
         return this.users.markEmailVerified(user, manager);
       });
@@ -107,10 +116,14 @@ export class AuthService {
     }
   }
 
-  async resendVerification(email: string): Promise<void> {
+  async resendVerification(token: string | null, email: string): Promise<void> {
     const normalized = normalizeEmail(email);
 
-    const code = await this.pendingRegistrations.refreshCode(normalized);
+    if (!token) {
+      return;
+    }
+
+    const code = await this.pendingRegistrations.refreshCode(token, normalized);
 
     if (!code) {
       return;
